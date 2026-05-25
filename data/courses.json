@@ -1,0 +1,242 @@
+[
+  {
+    "code": "CPSC 110",
+    "subject": "CPSC",
+    "number": "110",
+    "title": "Computation, Programs, and Programming",
+    "description": "Fundamental program and computation structures. Introductory programming skills.",
+    "credits": "4"
+  },
+  {
+    "code": "CPSC 121",
+    "subject": "CPSC",
+    "number": "121",
+    "title": "Models of Computation",
+    "description": "Physical and mathematical models of computation. Boolean algebra, sets and predicate logic.",
+    "credits": "4"
+  },
+  {
+    "code": "CPSC 210",
+    "subject": "CPSC",
+    "number": "210",
+    "title": "Software Construction",
+    "description": "Design, write, and maintain medium-sized software systems.",
+    "credits": "4"
+  },
+  {
+    "code": "CPSC 213",
+    "subject": "CPSC",
+    "number": "213",
+    "title": "Introduction to Computer Systems",
+    "description": "Software architecture, operating systems, and I/O architectures.",
+    "credits": "4"
+  },
+  {
+    "code": "CPSC 221",
+    "subject": "CPSC",
+    "number": "221",
+    "title": "Basic Algorithms and Data Structures",
+    "description": "Design and analysis of basic algorithms and data structures.",
+    "credits": "4"
+  },
+  {
+    "code": "CPSC 304",
+    "subject": "CPSC",
+    "number": "304",
+    "title": "Introduction to Relational Databases",
+    "description": "Relational model, SQL, conceptual design, normalization, and transaction management.",
+    "credits": "3"
+  },
+  {
+    "code": "CPSC 310",
+    "subject": "CPSC",
+    "number": "310",
+    "title": "Introduction to Software Engineering",
+    "description": "Specification, design, implementation, and evaluation of large software systems.",
+    "credits": "4"
+  },
+  {
+    "code": "CPSC 313",
+    "subject": "CPSC",
+    "number": "313",
+    "title": "Computer Hardware and Operating Systems",
+    "description": "Performance of computer systems. Hardware, OS, and architecture.",
+    "credits": "4"
+  },
+  {
+    "code": "CPSC 320",
+    "subject": "CPSC",
+    "number": "320",
+    "title": "Intermediate Algorithm Design and Analysis",
+    "description": "Design and analysis of efficient algorithms.",
+    "credits": "3"
+  },
+  {
+    "code": "CPSC 322",
+    "subject": "CPSC",
+    "number": "322",
+    "title": "Introduction to Artificial Intelligence",
+    "description": "State-spaces, search, constraint satisfaction, planning, logic, uncertainty, and learning.",
+    "credits": "3"
+  },
+  {
+    "code": "MATH 100",
+    "subject": "MATH",
+    "number": "100",
+    "title": "Differential Calculus",
+    "description": "Differential calculus of one variable. Applications.",
+    "credits": "3"
+  },
+  {
+    "code": "MATH 101",
+    "subject": "MATH",
+    "number": "101",
+    "title": "Integral Calculus",
+    "description": "Integral calculus of one variable. Applications.",
+    "credits": "3"
+  },
+  {
+    "code": "MATH 200",
+    "subject": "MATH",
+    "number": "200",
+    "title": "Calculus III",
+    "description": "Multivariable calculus.",
+    "credits": "3"
+  },
+  {
+    "code": "MATH 220",
+    "subject": "MATH",
+    "number": "220",
+    "title": "Mathematical Proof",
+    "description": "Reading and writing rigorous mathematical proofs.",
+    "credits": "3"
+  },
+  {
+    "code": "MATH 221",
+    "subject": "MATH",
+    "number": "221",
+    "title": "Matrix Algebra",
+    "description": "Linear equations, matrices, vector spaces, eigenvalues.",
+    "credits": "3"
+  },
+  {
+    "code": "STAT 200",
+    "subject": "STAT",
+    "number": "200",
+    "title": "Elementary Statistics for Applications",
+    "description": "Statistical reasoning and applications.",
+    "credits": "3"
+  },
+  {
+    "code": "STAT 251",
+    "subject": "STAT",
+    "number": "251",
+    "title": "Elementary Statistics",
+    "description": "Probability, random variables, statistical inference.",
+    "credits": "3"
+  },
+  {
+    "code": "PHYS 101",
+    "subject": "PHYS",
+    "number": "101",
+    "title": "Energy and Waves",
+    "description": "Energy, oscillations, waves, fluids, and thermodynamics.",
+    "credits": "3"
+  },
+  {
+    "code": "PHYS 102",
+    "subject": "PHYS",
+    "number": "102",
+    "title": "Electricity, Light and Radiation",
+    "description": "Electromagnetism, optics, and modern physics.",
+    "credits": "3"
+  },
+  {
+    "code": "CHEM 121",
+    "subject": "CHEM",
+    "number": "121",
+    "title": "Structural Chemistry",
+    "description": "Bonding and structure, focusing on the periodic properties of matter.",
+    "credits": "4"
+  },
+  {
+    "code": "CHEM 123",
+    "subject": "CHEM",
+    "number": "123",
+    "title": "Thermodynamics, Kinetics and Organic Chemistry",
+    "description": "Thermodynamics, kinetics, and an introduction to organic chemistry.",
+    "credits": "4"
+  },
+  {
+    "code": "BIOL 111",
+    "subject": "BIOL",
+    "number": "111",
+    "title": "Introduction to Modern Biology",
+    "description": "Biological concepts including cell, molecular, evolutionary, and ecological biology.",
+    "credits": "3"
+  },
+  {
+    "code": "ENGL 100",
+    "subject": "ENGL",
+    "number": "100",
+    "title": "Reading and Writing about Literature",
+    "description": "Critical reading of poetry, drama, and prose fiction.",
+    "credits": "3"
+  },
+  {
+    "code": "PSYC 100",
+    "subject": "PSYC",
+    "number": "100",
+    "title": "Introduction to Psychology",
+    "description": "An introduction to the methods, theories, and findings of psychology.",
+    "credits": "6"
+  },
+  {
+    "code": "ECON 101",
+    "subject": "ECON",
+    "number": "101",
+    "title": "Principles of Microeconomics",
+    "description": "Elements of theory and Canadian policy and institutions.",
+    "credits": "3"
+  },
+  {
+    "code": "ECON 102",
+    "subject": "ECON",
+    "number": "102",
+    "title": "Principles of Macroeconomics",
+    "description": "Output, employment, inflation, money, banking, fiscal policy.",
+    "credits": "3"
+  },
+  {
+    "code": "COMM 101",
+    "subject": "COMM",
+    "number": "101",
+    "title": "Fundamentals of Business",
+    "description": "Introduction to business concepts and contemporary issues.",
+    "credits": "3"
+  },
+  {
+    "code": "PHIL 101",
+    "subject": "PHIL",
+    "number": "101",
+    "title": "Introduction to Philosophy",
+    "description": "Selected problems and themes in the history of philosophy.",
+    "credits": "3"
+  },
+  {
+    "code": "POLI 101",
+    "subject": "POLI",
+    "number": "101",
+    "title": "The Government of Canada",
+    "description": "Political institutions in Canada.",
+    "credits": "3"
+  },
+  {
+    "code": "APSC 100",
+    "subject": "APSC",
+    "number": "100",
+    "title": "Introduction to Engineering",
+    "description": "Introduction to engineering design and the engineering profession.",
+    "credits": "3"
+  }
+]
