@@ -1,5 +1,6 @@
 import { drizzle, type PostgresJsDatabase } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
+import { normalizeDatabaseUrl } from "@/lib/database-url";
 import * as schema from "./schema";
 
 type Db = PostgresJsDatabase<typeof schema>;
@@ -12,10 +13,12 @@ const globalForDb = globalThis as typeof globalThis & {
 function getDb(): Db {
   if (globalForDb.__db) return globalForDb.__db;
 
-  const connectionString = process.env.DATABASE_URL;
-  if (!connectionString) {
+  const rawUrl = process.env.DATABASE_URL;
+  if (!rawUrl) {
     throw new Error("DATABASE_URL is not set");
   }
+
+  const connectionString = normalizeDatabaseUrl(rawUrl);
 
   const client =
     globalForDb.__pgClient ??
