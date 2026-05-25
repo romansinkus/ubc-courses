@@ -12,6 +12,10 @@ export async function GET(request: Request) {
     return NextResponse.json({ results: [] });
   }
 
+  // Match the code ignoring whitespace so "CPSC 110" and "CPSC110" both match.
+  const qNoSpace = q.replace(/\s+/g, "");
+  const codeNoSpace = sql`replace(${courses.code}, ' ', '')`;
+
   // Rank: exact code prefix > code contains > title contains.
   const results = await db
     .select({
@@ -19,11 +23,11 @@ export async function GET(request: Request) {
       title: courses.title,
     })
     .from(courses)
-    .where(or(ilike(courses.code, `%${q}%`), ilike(courses.title, `%${q}%`)))
+    .where(or(sql`${codeNoSpace} ilike ${`%${qNoSpace}%`}`, ilike(courses.title, `%${q}%`)))
     .orderBy(
       sql`case
-        when ${courses.code} ilike ${`${q}%`} then 0
-        when ${courses.code} ilike ${`%${q}%`} then 1
+        when ${codeNoSpace} ilike ${`${qNoSpace}%`} then 0
+        when ${codeNoSpace} ilike ${`%${qNoSpace}%`} then 1
         else 2
       end`,
       asc(courses.code),

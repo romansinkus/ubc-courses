@@ -6,10 +6,13 @@ import { buttonVariants } from "@/components/ui/button";
 import { SearchBox } from "@/components/search-box";
 import { CoursesFilters } from "@/components/courses-filters";
 import { ActiveFilterChips } from "@/components/active-filter-chips";
+import { LiveBackground } from "@/components/live-background";
 import { db } from "@/db";
 import { courses, reviews } from "@/db/schema";
 import { and, asc, eq, ilike, inArray, or, sql, type SQL } from "drizzle-orm";
 import { parseTermValue } from "@/lib/terms";
+import { cn } from "@/lib/utils";
+import { glassSurfaceClass } from "@/lib/glass-styles";
 
 type SearchParams = Promise<{
   q?: string;
@@ -32,8 +35,13 @@ export default async function CoursesPage({ searchParams }: { searchParams: Sear
 
   const filters: SQL[] = [];
   if (query) {
+    // Match the code ignoring whitespace so "CPSC 110" and "CPSC110" both match.
+    const queryNoSpace = query.replace(/\s+/g, "");
     filters.push(
-      or(ilike(courses.code, `%${query}%`), ilike(courses.title, `%${query}%`))!,
+      or(
+        sql`replace(${courses.code}, ' ', '') ilike ${`%${queryNoSpace}%`}`,
+        ilike(courses.title, `%${query}%`),
+      )!,
     );
   }
   if (selectedSubjects.length > 0) {
@@ -86,93 +94,107 @@ export default async function CoursesPage({ searchParams }: { searchParams: Sear
   const hasActive = !!query || selectedSubjects.length > 0 || level !== "all";
 
   return (
-    <div className="mx-auto max-w-6xl px-4">
-      <div className="sticky top-14 z-30 -mx-4 border-b bg-background/95 px-4 py-5 backdrop-blur supports-[backdrop-filter]:bg-background/80">
-        <div className="space-y-3">
+    <>
+      <LiveBackground />
+      <div className="relative mx-auto max-w-6xl px-4 lg:flex lg:h-[calc(100vh-3.5rem)] lg:flex-col">
+        <div className="relative z-30 space-y-3 pb-8 pt-4 max-lg:sticky max-lg:top-14 lg:shrink-0">
           <h1 className="text-2xl font-bold">Browse courses</h1>
           <div className="max-w-xl">
-            <SearchBox defaultValue={query ?? ""} placeholder="Search by code or title" />
+            <SearchBox
+              variant="glass"
+              defaultValue={query ?? ""}
+              placeholder="Search by code or title"
+            />
           </div>
         </div>
-      </div>
 
-      <div className="grid grid-cols-1 gap-8 pt-6 pb-10 lg:grid-cols-[260px_1fr]">
-        <div className="lg:sticky lg:top-44 lg:self-start lg:max-h-[calc(100vh-12rem)] lg:overflow-y-auto rounded-lg border bg-card p-5">
-          <Suspense fallback={<p className="text-sm text-muted-foreground">Loading filters…</p>}>
-            <CoursesFilters
-              subjects={subjects}
-              selectedSubjects={selectedSubjects}
-              level={level}
-              term={term}
-            />
-          </Suspense>
-        </div>
-
-        <div className="space-y-4 min-w-0">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <p className="text-sm text-muted-foreground">
-              {rows.length} course{rows.length === 1 ? "" : "s"}
-            </p>
-            <Suspense fallback={null}>
-              <ActiveFilterChips
+        <div className="grid grid-cols-1 gap-8 pb-10 lg:min-h-0 lg:flex-1 lg:grid-cols-[260px_1fr] lg:pb-0">
+          <div
+            className={cn(
+              "p-5 lg:min-h-0 lg:overflow-y-auto",
+              glassSurfaceClass,
+            )}
+          >
+            <Suspense fallback={<p className="text-sm text-muted-foreground">Loading filters…</p>}>
+              <CoursesFilters
+                subjects={subjects}
                 selectedSubjects={selectedSubjects}
                 level={level}
                 term={term}
-                query={query}
               />
             </Suspense>
           </div>
 
-          {rows.length === 0 ? (
-            <div className="rounded-lg border border-dashed p-8 text-center space-y-3">
-              <p className="text-muted-foreground">
-                {hasActive
-                  ? query
-                    ? <>No courses match &ldquo;{query}&rdquo;.</>
-                    : "No courses match your filters."
-                  : "No courses found."}
+          <div className="min-w-0 space-y-4 lg:flex lg:min-h-0 lg:flex-col">
+            <div className="flex flex-wrap items-center justify-between gap-3 lg:shrink-0">
+              <p className="text-sm text-muted-foreground">
+                {rows.length} course{rows.length === 1 ? "" : "s"}
               </p>
-              {query ? (
-                <Link
-                  href={`/courses/new?code=${encodeURIComponent(query)}`}
-                  className={buttonVariants({ size: "sm" })}
-                >
-                  <Plus className="h-4 w-4" />
-                  Add {query.toUpperCase()} to the catalog
-                </Link>
+              <Suspense fallback={null}>
+                <ActiveFilterChips
+                  selectedSubjects={selectedSubjects}
+                  level={level}
+                  term={term}
+                  query={query}
+                />
+              </Suspense>
+            </div>
+
+            {/* On lg+ the list scrolls in its own pane; the top fade masks cards
+                out as they approach the (transparent) sticky search bar. */}
+            <div className="lg:min-h-0 lg:flex-1 lg:overflow-y-auto lg:px-1 lg:pb-6 lg:pt-4 lg:[mask-image:linear-gradient(to_bottom,transparent_0,black_1rem)] lg:[-webkit-mask-image:linear-gradient(to_bottom,transparent_0,black_1rem)]">
+              {rows.length === 0 ? (
+                <div className="rounded-lg border border-dashed p-8 text-center space-y-3">
+                  <p className="text-muted-foreground">
+                    {hasActive
+                      ? query
+                        ? <>No courses match &ldquo;{query}&rdquo;.</>
+                        : "No courses match your filters."
+                      : "No courses found."}
+                  </p>
+                  {query ? (
+                    <Link
+                      href={`/courses/new?code=${encodeURIComponent(query)}`}
+                      className={buttonVariants({ size: "sm" })}
+                    >
+                      <Plus className="h-4 w-4" />
+                      Add {query.toUpperCase()} to the catalog
+                    </Link>
+                  ) : (
+                    <Link href="/courses/new" className={buttonVariants({ size: "sm" })}>
+                      <Plus className="h-4 w-4" />
+                      Add a new course
+                    </Link>
+                  )}
+                </div>
               ) : (
-                <Link href="/courses/new" className={buttonVariants({ size: "sm" })}>
-                  <Plus className="h-4 w-4" />
-                  Add a new course
-                </Link>
+                <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                  {rows.map((c) => (
+                    <Link key={c.code} href={`/courses/${encodeURIComponent(c.code)}`}>
+                      <Card className="h-full transition-all duration-150 hover:-translate-y-0.5 hover:border-ubc-blue-400/60 hover:bg-ubc-blue-100/40 hover:shadow-sm dark:hover:bg-ubc-blue-500/15">
+                        <CardHeader>
+                          <CardTitle className="text-base">{c.code}</CardTitle>
+                          <CardDescription className="line-clamp-2">{c.title}</CardDescription>
+                        </CardHeader>
+                        <CardContent className="text-xs text-muted-foreground">
+                          {c.reviewCount > 0 ? (
+                            <>
+                              {c.reviewCount} review{c.reviewCount === 1 ? "" : "s"}
+                              {c.avgRating ? ` · ★ ${c.avgRating.toFixed(1)}` : ""}
+                            </>
+                          ) : (
+                            "No reviews yet"
+                          )}
+                        </CardContent>
+                      </Card>
+                    </Link>
+                  ))}
+                </div>
               )}
             </div>
-          ) : (
-            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-              {rows.map((c) => (
-                <Link key={c.code} href={`/courses/${encodeURIComponent(c.code)}`}>
-                  <Card className="h-full transition-all duration-150 hover:-translate-y-0.5 hover:border-foreground/40 hover:shadow-sm">
-                    <CardHeader>
-                      <CardTitle className="text-base">{c.code}</CardTitle>
-                      <CardDescription className="line-clamp-2">{c.title}</CardDescription>
-                    </CardHeader>
-                    <CardContent className="text-xs text-muted-foreground">
-                      {c.reviewCount > 0 ? (
-                        <>
-                          {c.reviewCount} review{c.reviewCount === 1 ? "" : "s"}
-                          {c.avgRating ? ` · ★ ${c.avgRating.toFixed(1)}` : ""}
-                        </>
-                      ) : (
-                        "No reviews yet"
-                      )}
-                    </CardContent>
-                  </Card>
-                </Link>
-              ))}
-            </div>
-          )}
+          </div>
         </div>
       </div>
-    </div>
+    </>
   );
 }

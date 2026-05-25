@@ -1,11 +1,11 @@
 import Link from "next/link";
-import { Plus } from "lucide-react";
+import { FileText, Paperclip, Plus } from "lucide-react";
 import { buttonVariants } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { db } from "@/db";
-import { courses, professors, profiles, reviews } from "@/db/schema";
-import { desc, eq, sql } from "drizzle-orm";
+import { courses, professors, profiles, reviewFiles, reviews } from "@/db/schema";
+import { desc, eq, inArray, sql } from "drizzle-orm";
 import { ASSESSMENT_TYPE_LABEL } from "@/components/assessment-type-picker";
 import { MEDIUM_LABEL } from "@/components/medium-picker";
 import {
@@ -82,6 +82,7 @@ export default async function CoursePage({ params }: { params: Params }) {
       wouldRecommend: reviews.wouldRecommend,
       groupwork: reviews.groupwork,
       body: reviews.body,
+      syllabusUrl: reviews.syllabusUrl,
       createdAt: reviews.createdAt,
       username: profiles.username,
     })
@@ -90,6 +91,24 @@ export default async function CoursePage({ params }: { params: Params }) {
     .leftJoin(professors, eq(professors.id, reviews.professorId))
     .where(eq(reviews.courseId, course.id))
     .orderBy(desc(reviews.createdAt));
+
+  const reviewIds = courseReviews.map((r) => r.id);
+  const fileRows = reviewIds.length
+    ? await db
+        .select({
+          reviewId: reviewFiles.reviewId,
+          url: reviewFiles.url,
+          originalName: reviewFiles.originalName,
+        })
+        .from(reviewFiles)
+        .where(inArray(reviewFiles.reviewId, reviewIds))
+    : [];
+  const filesByReview = new Map<string, { url: string; originalName: string }[]>();
+  for (const f of fileRows) {
+    const list = filesByReview.get(f.reviewId) ?? [];
+    list.push({ url: f.url, originalName: f.originalName });
+    filesByReview.set(f.reviewId, list);
+  }
 
   const stats = resolveCourseStats(
     normalizeCourseStats(
@@ -198,7 +217,36 @@ export default async function CoursePage({ params }: { params: Params }) {
                     ) : null}
                   </div>
                 </CardHeader>
-                <CardContent className="text-sm whitespace-pre-wrap">{r.body}</CardContent>
+                <CardContent className="space-y-3 text-sm">
+                  <p className="whitespace-pre-wrap">{r.body}</p>
+                  {(r.syllabusUrl || filesByReview.has(r.id)) && (
+                    <div className="flex flex-wrap gap-x-4 gap-y-1.5 pt-1">
+                      {r.syllabusUrl ? (
+                        <a
+                          href={r.syllabusUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1.5 text-xs font-medium text-primary hover:underline"
+                        >
+                          <FileText className="h-3.5 w-3.5" />
+                          View syllabus
+                        </a>
+                      ) : null}
+                      {(filesByReview.get(r.id) ?? []).map((f) => (
+                        <a
+                          key={f.url}
+                          href={f.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1.5 text-xs font-medium text-primary hover:underline"
+                        >
+                          <Paperclip className="h-3.5 w-3.5" />
+                          {f.originalName}
+                        </a>
+                      ))}
+                    </div>
+                  )}
+                </CardContent>
               </Card>
             ))}
           </div>

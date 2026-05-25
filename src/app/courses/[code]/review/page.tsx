@@ -21,6 +21,7 @@ import { RatingBarInput } from "@/components/rating-bar";
 import { TermYearSelect } from "@/components/term-year-select";
 import { AssessmentTypePicker } from "@/components/assessment-type-picker";
 import { MediumPicker } from "@/components/medium-picker";
+import { MultiFileInput } from "@/components/multi-file-input";
 import { WOULD_RECOMMEND_LABEL } from "@/lib/would-recommend";
 import { submitReview } from "./actions";
 
@@ -172,6 +173,31 @@ export default async function WriteReviewPage({
                 maxLength={5000}
                 rows={8}
                 placeholder="What was the workload like? Was the prof good? What would you tell yourself before taking this course?"
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <Label>Syllabus (PDF, optional)</Label>
+              <p className="text-xs text-muted-foreground">
+                Attach the course syllabus to help others. Max 5MB.
+              </p>
+              <MultiFileInput
+                name="syllabus"
+                accept="application/pdf"
+                maxFiles={1}
+                buttonLabel="Add syllabus"
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <Label>Additional files (optional)</Label>
+              <p className="text-xs text-muted-foreground">
+                Notes, past exams, study guides, etc. PDF, images, text, or Word — up to 5 files,
+                5MB each.
+              </p>
+              <MultiFileInput
+                name="files"
+                accept="application/pdf,image/png,image/jpeg,image/webp,text/plain,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
               />
             </div>
 

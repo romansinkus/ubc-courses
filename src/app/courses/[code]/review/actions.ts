@@ -4,11 +4,28 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { db } from "@/db";
-import { courses, professors, reviews } from "@/db/schema";
+import { courses, professors, reviewFiles, reviews } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { getCurrentProfile } from "@/lib/auth";
+import { createClient } from "@/lib/supabase/server";
 import { RATING_MAX, RATING_MIN } from "@/lib/ratings";
 import { parseTermValue } from "@/lib/terms";
+
+const SYLLABUS_BUCKET = "syllabi";
+const FILES_BUCKET = "review-files";
+const MAX_FILE_BYTES = 5 * 1024 * 1024; // 5MB per file
+const MAX_FILE_COUNT = 5;
+
+// Allowed attachment types → file extension used for the stored object.
+const EXT_BY_TYPE: Record<string, string> = {
+  "application/pdf": "pdf",
+  "image/png": "png",
+  "image/jpeg": "jpg",
+  "image/webp": "webp",
+  "text/plain": "txt",
+  "application/msword": "doc",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document": "docx",
+};
 
 const ReviewSchema = z.object({
   courseCode: z.string().min(1),
@@ -59,6 +76,82 @@ export async function submitReview(formData: FormData) {
   if (!course) redirect("/courses");
 
   const professorName = data.professor.trim();
+  const reviewId = crypto.randomUUID();
+
+  const reviewError = (msg: string) =>
+    redirect(
+      `/courses/${encodeURIComponent(data.courseCode)}/review?error=${encodeURIComponent(msg)}`,
+    );
+
+  const supabase = await createClient();
+  // Track every uploaded object so we can roll back Storage if the DB write fails.
+  const uploaded: { bucket: string; path: string }[] = [];
+
+  // Optional syllabus PDF.
+  let syllabusPath: string | null = null;
+  let syllabusUrl: string | null = null;
+  const syllabus = formData.get("syllabus");
+  if (syllabus instanceof File && syllabus.size > 0) {
+    if (syllabus.type !== "application/pdf") {
+      reviewError("Syllabus must be a PDF.");
+    }
+    if (syllabus.size > MAX_FILE_BYTES) {
+      reviewError("Syllabus must be 5MB or smaller.");
+    }
+    const path = `${course.id}/${crypto.randomUUID()}.pdf`;
+    const { error: uploadError } = await supabase.storage
+      .from(SYLLABUS_BUCKET)
+      .upload(path, syllabus, { contentType: "application/pdf", upsert: false });
+    if (uploadError) {
+      console.error("syllabus upload failed:", uploadError);
+      reviewError("Could not upload the syllabus. Please try again.");
+    }
+    uploaded.push({ bucket: SYLLABUS_BUCKET, path });
+    syllabusPath = path;
+    syllabusUrl = supabase.storage.from(SYLLABUS_BUCKET).getPublicUrl(path).data.publicUrl;
+  }
+
+  // Optional additional files (notes, past exams, etc.).
+  const cleanup = async () => {
+    for (const { bucket, path } of uploaded) {
+      await supabase.storage.from(bucket).remove([path]);
+    }
+  };
+  const incomingFiles = formData
+    .getAll("files")
+    .filter((f): f is File => f instanceof File && f.size > 0);
+  if (incomingFiles.length > MAX_FILE_COUNT) {
+    reviewError(`You can attach at most ${MAX_FILE_COUNT} files.`);
+  }
+  const fileRows: { storagePath: string; url: string; originalName: string; contentType: string; sizeBytes: number }[] = [];
+  for (const f of incomingFiles) {
+    const ext = EXT_BY_TYPE[f.type];
+    if (!ext) {
+      await cleanup();
+      reviewError(`"${f.name}" is an unsupported file type.`);
+    }
+    if (f.size > MAX_FILE_BYTES) {
+      await cleanup();
+      reviewError(`"${f.name}" is larger than 5MB.`);
+    }
+    const path = `${reviewId}/${crypto.randomUUID()}.${ext}`;
+    const { error: uploadError } = await supabase.storage
+      .from(FILES_BUCKET)
+      .upload(path, f, { contentType: f.type, upsert: false });
+    if (uploadError) {
+      console.error("review file upload failed:", uploadError);
+      await cleanup();
+      reviewError("Could not upload one of your files. Please try again.");
+    }
+    uploaded.push({ bucket: FILES_BUCKET, path });
+    fileRows.push({
+      storagePath: path,
+      url: supabase.storage.from(FILES_BUCKET).getPublicUrl(path).data.publicUrl,
+      originalName: f.name,
+      contentType: f.type,
+      sizeBytes: f.size,
+    });
+  }
 
   try {
     await db.transaction(async (tx) => {
@@ -78,6 +171,7 @@ export async function submitReview(formData: FormData) {
       }
 
       await tx.insert(reviews).values({
+        id: reviewId,
         userId: profile.id,
         courseId: course.id,
         professorId,
@@ -94,10 +188,18 @@ export async function submitReview(formData: FormData) {
         wouldRecommend: data.wouldRecommend ?? null,
         groupwork: data.groupwork === "yes",
         body: data.body,
+        syllabusPath,
+        syllabusUrl,
       });
+
+      if (fileRows.length > 0) {
+        await tx.insert(reviewFiles).values(fileRows.map((r) => ({ reviewId, ...r })));
+      }
     });
   } catch (err) {
     console.error("submitReview failed:", err);
+    // Don't leave uploaded objects orphaned if the review insert failed.
+    await cleanup();
     const message =
       err instanceof Error && err.message.includes("column")
         ? "Database schema is out of date. Run: npm run db:migrate"

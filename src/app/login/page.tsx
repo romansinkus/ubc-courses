@@ -41,7 +41,7 @@ export default async function LoginPage({ searchParams }: { searchParams: Search
                   type="text"
                   minLength={3}
                   maxLength={24}
-                  placeholder="e.g. roman_s"
+                  placeholder="e.g. john_d"
                   pattern="[a-zA-Z0-9_]+"
                 />
               </div>

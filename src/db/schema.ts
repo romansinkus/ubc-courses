@@ -86,6 +86,8 @@ export const reviews = pgTable(
     wouldRecommend: wouldRecommendEnum("would_recommend"),
     groupwork: boolean("groupwork"),
     body: text("body").notNull(),
+    syllabusPath: text("syllabus_path"),
+    syllabusUrl: text("syllabus_url"),
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   },
   (t) => [
@@ -93,6 +95,23 @@ export const reviews = pgTable(
     index("reviews_user_idx").on(t.userId),
     index("reviews_created_at_idx").on(t.createdAt),
   ],
+);
+
+export const reviewFiles = pgTable(
+  "review_files",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    reviewId: uuid("review_id")
+      .notNull()
+      .references(() => reviews.id, { onDelete: "cascade" }),
+    storagePath: text("storage_path").notNull(),
+    url: text("url").notNull(),
+    originalName: text("original_name").notNull(),
+    contentType: text("content_type").notNull(),
+    sizeBytes: integer("size_bytes").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => [index("review_files_review_idx").on(t.reviewId)],
 );
 
 export const profilesRelations = relations(profiles, ({ many }) => ({
@@ -103,13 +122,18 @@ export const coursesRelations = relations(courses, ({ many }) => ({
   reviews: many(reviews),
 }));
 
-export const reviewsRelations = relations(reviews, ({ one }) => ({
+export const reviewsRelations = relations(reviews, ({ one, many }) => ({
   author: one(profiles, { fields: [reviews.userId], references: [profiles.id] }),
   course: one(courses, { fields: [reviews.courseId], references: [courses.id] }),
   professor: one(professors, {
     fields: [reviews.professorId],
     references: [professors.id],
   }),
+  files: many(reviewFiles),
+}));
+
+export const reviewFilesRelations = relations(reviewFiles, ({ one }) => ({
+  review: one(reviews, { fields: [reviewFiles.reviewId], references: [reviews.id] }),
 }));
 
 export const professorsRelations = relations(professors, ({ many }) => ({
@@ -121,3 +145,5 @@ export type Course = typeof courses.$inferSelect;
 export type Professor = typeof professors.$inferSelect;
 export type Review = typeof reviews.$inferSelect;
 export type NewReview = typeof reviews.$inferInsert;
+export type ReviewFile = typeof reviewFiles.$inferSelect;
+export type NewReviewFile = typeof reviewFiles.$inferInsert;
