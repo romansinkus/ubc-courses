@@ -1,10 +1,9 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { User } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Separator } from "@/components/ui/separator";
+import { LiveBackground } from "@/components/live-background";
 import { db } from "@/db";
 import { courses, professors, profiles, reviews } from "@/db/schema";
 import { desc, eq } from "drizzle-orm";
@@ -13,6 +12,16 @@ import { MEDIUM_LABEL } from "@/components/medium-picker";
 import { RatingBarDisplay } from "@/components/rating-bar";
 import { getCurrentUser } from "@/lib/auth";
 import { signOut } from "@/app/login/actions";
+import { cn } from "@/lib/utils";
+import {
+  glassAvatarClass,
+  glassBadgeClass,
+  glassContentCardClass,
+  glassDividerClass,
+  glassFormSectionTitleClass,
+  glassOutlineButtonClass,
+  glassSurfaceClass,
+} from "@/lib/glass-styles";
 
 type Params = Promise<{ username: string }>;
 
@@ -61,80 +70,113 @@ export default async function UserProfilePage({ params }: { params: Params }) {
     .orderBy(desc(reviews.createdAt));
 
   return (
-    <div className="mx-auto max-w-3xl px-4 py-10 space-y-8">
-      <header className="flex items-start gap-4">
-        <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground">
-          <User className="h-8 w-8" aria-hidden="true" />
+    <>
+      <LiveBackground />
+      <div className="relative mx-auto max-w-3xl space-y-8 px-4 py-10 pb-16">
+        <div className={cn(glassSurfaceClass, "rounded-2xl p-6 sm:p-8")}>
+          <header className="flex items-start gap-4">
+            <div className={cn(glassAvatarClass, "h-16 w-16")}>
+              <User className="h-8 w-8" aria-hidden="true" />
+            </div>
+            <div className="min-w-0 flex-1 space-y-1">
+              <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                Profile
+              </p>
+              <h1 className="text-3xl font-bold tracking-tight">@{profile.username}</h1>
+              {profile.displayName ? (
+                <p className="text-muted-foreground">{profile.displayName}</p>
+              ) : null}
+              {profile.bio ? <p className="text-sm">{profile.bio}</p> : null}
+              <p className="text-xs text-muted-foreground">
+                {userReviews.length} review{userReviews.length === 1 ? "" : "s"}
+              </p>
+            </div>
+            {isOwnProfile ? (
+              <form action={signOut}>
+                <Button
+                  type="submit"
+                  variant="outline"
+                  size="sm"
+                  className={glassOutlineButtonClass}
+                >
+                  Sign out
+                </Button>
+              </form>
+            ) : null}
+          </header>
         </div>
-        <div className="flex-1 space-y-1">
-          <h1 className="text-3xl font-bold">@{profile.username}</h1>
-          {profile.displayName ? (
-            <p className="text-muted-foreground">{profile.displayName}</p>
-          ) : null}
-          {profile.bio ? <p className="text-sm">{profile.bio}</p> : null}
-          <p className="text-xs text-muted-foreground">
-            {userReviews.length} review{userReviews.length === 1 ? "" : "s"}
-          </p>
-        </div>
-        {isOwnProfile ? (
-          <form action={signOut}>
-            <Button type="submit" variant="outline" size="sm">
-              Sign out
-            </Button>
-          </form>
-        ) : null}
-      </header>
 
-      {isOwnProfile ? <Separator /> : null}
+        {userReviews.length === 0 ? (
+          <div className={cn(glassContentCardClass, "text-center text-muted-foreground")}>
+            No reviews yet.
+          </div>
+        ) : (
+          <div className="space-y-4">
+            <h2 className={cn(glassFormSectionTitleClass, "px-1")}>Reviews</h2>
+            {userReviews.map((r) => (
+              <article key={r.id} className={glassContentCardClass}>
+                <div className="space-y-3">
+                  <div className="flex flex-wrap items-center gap-2 text-sm font-medium">
+                    <Link
+                      href={`/courses/${encodeURIComponent(r.courseCode)}`}
+                      className="hover:underline"
+                    >
+                      {r.courseCode}
+                    </Link>
+                    <span className="text-muted-foreground font-normal">· {r.courseTitle}</span>
+                  </div>
 
-      {userReviews.length === 0 ? (
-        <p className="text-muted-foreground">No reviews yet.</p>
-      ) : (
-        <div className="space-y-3">
-          {userReviews.map((r) => (
-            <Card key={r.id}>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium flex flex-wrap gap-2 items-center">
-                  <Link
-                    href={`/courses/${encodeURIComponent(r.courseCode)}`}
-                    className="hover:underline"
-                  >
-                    {r.courseCode}
-                  </Link>
-                  <span className="text-muted-foreground font-normal">· {r.courseTitle}</span>
-                </CardTitle>
-                <div className="grid gap-3 pt-2 sm:grid-cols-2">
-                  <RatingBarDisplay label="Overall" value={r.overallRating} compact />
-                  <RatingBarDisplay label="Difficulty" value={r.difficulty} compact />
-                  {r.enjoyability != null ? (
-                    <RatingBarDisplay label="Enjoyability" value={r.enjoyability} compact />
-                  ) : null}
-                  {r.usefulness != null ? (
-                    <RatingBarDisplay label="Usefulness" value={r.usefulness} compact />
-                  ) : null}
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <RatingBarDisplay label="Overall" value={r.overallRating} compact />
+                    <RatingBarDisplay label="Difficulty" value={r.difficulty} compact />
+                    {r.enjoyability != null ? (
+                      <RatingBarDisplay label="Enjoyability" value={r.enjoyability} compact />
+                    ) : null}
+                    {r.usefulness != null ? (
+                      <RatingBarDisplay label="Usefulness" value={r.usefulness} compact />
+                    ) : null}
+                  </div>
+
+                  <div className="flex flex-wrap gap-1.5">
+                    {r.medium ? (
+                      <Badge variant="secondary" className={glassBadgeClass}>
+                        {MEDIUM_LABEL[r.medium]}
+                      </Badge>
+                    ) : null}
+                    {r.assessmentType ? (
+                      <Badge variant="secondary" className={glassBadgeClass}>
+                        {ASSESSMENT_TYPE_LABEL[r.assessmentType]}
+                      </Badge>
+                    ) : null}
+                    {r.groupwork != null ? (
+                      <Badge variant="secondary" className={glassBadgeClass}>
+                        Groupwork: {r.groupwork ? "Yes" : "No"}
+                      </Badge>
+                    ) : null}
+                    {r.grade ? (
+                      <Badge variant="secondary" className={glassBadgeClass}>
+                        Grade: {r.grade}
+                      </Badge>
+                    ) : null}
+                    <Badge variant="outline" className={glassBadgeClass}>
+                      {TERM_LABEL[r.term]} {r.year}
+                    </Badge>
+                    {r.professor ? (
+                      <Badge variant="outline" className={glassBadgeClass}>
+                        Prof. {r.professor}
+                      </Badge>
+                    ) : null}
+                  </div>
+
+                  <div className={cn("border-t pt-3", glassDividerClass)}>
+                    <p className="text-sm whitespace-pre-wrap">{r.body}</p>
+                  </div>
                 </div>
-                <div className="flex flex-wrap gap-1.5 pt-2">
-                  {r.medium ? (
-                    <Badge variant="secondary">{MEDIUM_LABEL[r.medium]}</Badge>
-                  ) : null}
-                  {r.assessmentType ? (
-                    <Badge variant="secondary">{ASSESSMENT_TYPE_LABEL[r.assessmentType]}</Badge>
-                  ) : null}
-                  {r.groupwork != null ? (
-                    <Badge variant="secondary">Groupwork: {r.groupwork ? "Yes" : "No"}</Badge>
-                  ) : null}
-                  {r.grade ? <Badge variant="secondary">Grade: {r.grade}</Badge> : null}
-                  <Badge variant="outline">
-                    {TERM_LABEL[r.term]} {r.year}
-                  </Badge>
-                  {r.professor ? <Badge variant="outline">Prof. {r.professor}</Badge> : null}
-                </div>
-              </CardHeader>
-              <CardContent className="text-sm whitespace-pre-wrap">{r.body}</CardContent>
-            </Card>
-          ))}
-        </div>
-      )}
-    </div>
+              </article>
+            ))}
+          </div>
+        )}
+      </div>
+    </>
   );
 }
