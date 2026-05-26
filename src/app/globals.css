@@ -166,9 +166,15 @@
 }
 .animate-stat-jump { animation: stat-jump 5s cubic-bezier(0.34, 1.4, 0.64, 1) infinite; }
 
+@keyframes stat-skeleton {
+  0%, 100% { opacity: 1; transform: translateY(0); }
+  50% { opacity: 0.72; transform: translateY(2px); }
+}
+.animate-stat-skeleton { animation: stat-skeleton 1.4s ease-in-out infinite; }
+
 @media (prefers-reduced-motion: reduce) {
   .animate-drift-1, .animate-drift-2, .animate-drift-3, .animate-drift-4,
-  .animate-stat-jump { animation: none; }
+  .animate-stat-jump, .animate-stat-skeleton { animation: none; }
 }
 
 @layer base {

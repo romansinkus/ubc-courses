@@ -24,13 +24,15 @@ function getDb(): Db {
     globalForDb.__pgClient ??
     postgres(connectionString, {
       prepare: false,
+      // Supabase pooler (transaction mode) + pipelining deadlocks when concurrent
+      // queries exceed max; see https://github.com/porsager/postgres/issues/970
       max: 3,
       idle_timeout: 20,
-    });
+      // postgres.js supports this at runtime; bundled types are behind 3.4.x
+      max_pipeline: 0,
+    } as Parameters<typeof postgres>[1]);
 
-  if (process.env.NODE_ENV !== "production") {
-    globalForDb.__pgClient = client;
-  }
+  globalForDb.__pgClient = client;
 
   globalForDb.__db = drizzle(client, { schema });
   return globalForDb.__db;

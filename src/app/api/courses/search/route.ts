@@ -3,8 +3,6 @@ import { db } from "@/db";
 import { courses } from "@/db/schema";
 import { asc, ilike, or, sql } from "drizzle-orm";
 
-export const dynamic = "force-dynamic";
-
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const q = (searchParams.get("q") ?? "").trim();

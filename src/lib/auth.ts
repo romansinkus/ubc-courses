@@ -6,10 +6,12 @@ import { eq } from "drizzle-orm";
 
 export const getCurrentUser = cache(async () => {
   const supabase = await createClient();
+  // Proxy middleware already validates/refreshes the session via getUser(); read
+  // the local session here to avoid a second ~350ms round-trip to Supabase Auth.
   const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  return user;
+    data: { session },
+  } = await supabase.auth.getSession();
+  return session?.user ?? null;
 });
 
 export const getCurrentProfile = cache(async () => {
