@@ -23,3 +23,26 @@ export const glassHeaderClass =
 export const glassNavLinkClass = `${primaryActionButtonClass} inline-flex h-10 items-center gap-1.5 rounded-xl px-3.5 text-sm font-medium hover:-translate-y-0.5 hover:scale-[1.03] motion-reduce:hover:translate-y-0 motion-reduce:hover:scale-100 [&_svg]:size-4 [&_svg]:shrink-0`;
 
 export const glassNavIconButtonClass = `${primaryActionButtonClass} inline-flex h-10 w-10 items-center justify-center rounded-xl hover:-translate-y-0.5 hover:scale-[1.03] motion-reduce:hover:translate-y-0 motion-reduce:hover:scale-100 [&_svg]:size-[1.125rem]`;
+
+export const glassFieldClass =
+  "border-white/55 bg-background/40 shadow-[inset_0_1px_0_rgba(255,255,255,0.35)] backdrop-blur-sm focus-visible:border-white/75 focus-visible:bg-background/55 focus-visible:ring-ubc-blue-400/30 dark:border-white/20 dark:bg-background/20 dark:focus-visible:bg-background/30";
+
+export const glassFormSectionClass =
+  "space-y-4 rounded-2xl border border-white/50 bg-background/35 p-5 shadow-[0_4px_24px_rgba(0,33,69,0.08),inset_0_1px_0_rgba(255,255,255,0.35)] ring-1 ring-white/55 backdrop-blur-xl supports-[backdrop-filter]:bg-background/25 dark:border-white/15 dark:bg-background/15 dark:ring-white/10";
+
+export const glassFormSectionTitleClass =
+  "text-sm font-semibold tracking-tight text-foreground/90";
+
+export const glassSegmentedControlClass =
+  "flex rounded-xl border border-white/55 bg-background/30 p-1 shadow-[inset_0_1px_0_rgba(255,255,255,0.3)] backdrop-blur-sm dark:border-white/20 dark:bg-background/15";
+
+export const glassSegmentedOptionClass =
+  "peer-checked:border peer-checked:border-white/50 peer-checked:bg-background/70 peer-checked:text-foreground peer-checked:shadow-[0_4px_16px_rgba(0,33,69,0.1),inset_0_1px_0_rgba(255,255,255,0.45)] dark:peer-checked:border-white/25 dark:peer-checked:bg-background/45";
+
+export const glassFileRowClass =
+  "flex items-center gap-2 rounded-xl border border-white/55 bg-background/40 px-3 py-2 text-sm shadow-[inset_0_1px_0_rgba(255,255,255,0.3)] backdrop-blur-sm dark:border-white/20 dark:bg-background/20";
+
+export const glassOutlineButtonClass =
+  "border-white/55 bg-background/35 shadow-[inset_0_1px_0_rgba(255,255,255,0.35)] backdrop-blur-sm hover:border-white/70 hover:bg-background/50 dark:border-white/20 dark:bg-background/15";
+
+export const glassSubmitButtonClass = `${primaryActionButtonClass} h-11 w-full rounded-xl text-base font-semibold hover:-translate-y-0.5 hover:shadow-md motion-reduce:hover:translate-y-0`;

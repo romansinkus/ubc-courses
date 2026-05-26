@@ -1,4 +1,5 @@
 import { cn } from "@/lib/utils";
+import { glassSegmentedControlClass, glassSegmentedOptionClass } from "@/lib/glass-styles";
 
 const OPTIONS = [
   { value: "exam", label: "Exam-based" },
@@ -8,11 +9,20 @@ const OPTIONS = [
 
 export function AssessmentTypePicker({
   defaultValue = "both",
+  variant = "default",
 }: {
   defaultValue?: (typeof OPTIONS)[number]["value"];
+  variant?: "default" | "glass";
 }) {
+  const isGlass = variant === "glass";
+
   return (
-    <div className="flex rounded-lg border bg-muted/40 p-1">
+    <div
+      className={cn(
+        "flex rounded-lg border p-1",
+        isGlass ? glassSegmentedControlClass : "border bg-muted/40",
+      )}
+    >
       {OPTIONS.map((opt) => (
         <label key={opt.value} className="flex-1 cursor-pointer">
           <input
@@ -26,8 +36,10 @@ export function AssessmentTypePicker({
           <span
             className={cn(
               "block rounded-md px-2 py-2 text-center text-sm font-medium text-muted-foreground transition-colors",
-              "peer-checked:bg-background peer-checked:text-foreground peer-checked:shadow-sm",
               "peer-focus-visible:ring-2 peer-focus-visible:ring-ring peer-focus-visible:ring-offset-2",
+              isGlass
+                ? cn("peer-checked:text-foreground", glassSegmentedOptionClass)
+                : "peer-checked:bg-background peer-checked:text-foreground peer-checked:shadow-sm",
             )}
           >
             {opt.label}

@@ -3,6 +3,8 @@
 import { useRef, useState } from "react";
 import { Paperclip, Plus, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
+import { glassFileRowClass, glassOutlineButtonClass } from "@/lib/glass-styles";
 
 function formatSize(bytes: number) {
   if (bytes < 1024) return `${bytes} B`;
@@ -16,12 +18,14 @@ export function MultiFileInput({
   maxFiles = 5,
   maxSizeBytes = 5 * 1024 * 1024,
   buttonLabel = "Add file",
+  variant = "default",
 }: {
   name: string;
   accept: string;
   maxFiles?: number;
   maxSizeBytes?: number;
   buttonLabel?: string;
+  variant?: "default" | "glass";
 }) {
   const [files, setFiles] = useState<File[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -67,6 +71,7 @@ export function MultiFileInput({
   }
 
   const atLimit = files.length >= maxFiles;
+  const isGlass = variant === "glass";
 
   return (
     <div className="space-y-2">
@@ -86,7 +91,12 @@ export function MultiFileInput({
           {files.map((f, i) => (
             <li
               key={`${f.name}-${f.size}-${i}`}
-              className="flex items-center gap-2 rounded-lg border border-input px-2.5 py-1.5 text-sm"
+              className={cn(
+                "flex items-center gap-2 text-sm",
+                isGlass
+                  ? glassFileRowClass
+                  : "rounded-lg border border-input px-2.5 py-1.5",
+              )}
             >
               <Paperclip className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
               <span className="min-w-0 flex-1 truncate">{f.name}</span>
@@ -110,6 +120,7 @@ export function MultiFileInput({
         size="sm"
         disabled={atLimit}
         onClick={() => pickerRef.current?.click()}
+        className={isGlass ? glassOutlineButtonClass : undefined}
       >
         <Plus className="h-4 w-4" />
         {buttonLabel}

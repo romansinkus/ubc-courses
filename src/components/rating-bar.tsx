@@ -3,6 +3,7 @@
 import { useRef, useState } from "react";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
+import { glassFieldClass } from "@/lib/glass-styles";
 import {
   RATING_DEFAULT,
   RATING_MAX,
@@ -20,14 +21,17 @@ function RatingScoreInput({
   label,
   value,
   onChange,
+  variant = "default",
 }: {
   id: string;
   label: string;
   value: number;
   onChange: (value: number) => void;
+  variant?: "default" | "glass";
 }) {
   const [focused, setFocused] = useState(false);
   const [draft, setDraft] = useState("");
+  const isGlass = variant === "glass";
 
   function commit(raw: string) {
     const parsed = parseInt(raw, 10);
@@ -43,7 +47,8 @@ function RatingScoreInput({
   return (
     <div
       className={cn(
-        "flex items-center gap-0.5 rounded-md border border-input bg-background px-1.5 py-0.5 text-sm font-medium tabular-nums shadow-sm transition-colors",
+        "flex items-center gap-0.5 rounded-md border px-1.5 py-0.5 text-sm font-medium tabular-nums shadow-sm transition-colors",
+        isGlass ? glassFieldClass : "border-input bg-background",
         focused && "ring-2 ring-ring/50",
       )}
       title="Click or Tab here, then type 0–10"
@@ -300,12 +305,14 @@ export function RatingBarInput({
   label,
   defaultValue = RATING_DEFAULT,
   required,
+  variant = "default",
 }: {
   name: string;
   id: string;
   label: string;
   defaultValue?: number;
   required?: boolean;
+  variant?: "default" | "glass";
 }) {
   const [value, setValue] = useState(defaultValue);
 
@@ -318,6 +325,7 @@ export function RatingBarInput({
           label={label}
           value={value}
           onChange={setValue}
+          variant={variant}
         />
       </div>
       <input type="hidden" name={name} value={value} required={required} />

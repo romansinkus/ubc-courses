@@ -14,8 +14,16 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { formatProfessorName } from "@/lib/professor-name";
+import { cn } from "@/lib/utils";
+import { glassFieldClass, glassSurfaceClass } from "@/lib/glass-styles";
 
-export function ProfessorPicker({ profs }: { profs: string[] }) {
+export function ProfessorPicker({
+  profs,
+  variant = "default",
+}: {
+  profs: string[];
+  variant?: "default" | "glass";
+}) {
   const [query, setQuery] = useState("");
   const [selectedProfessor, setSelectedProfessor] = useState<string | null>(null);
   const [filtered, setFiltered] = useState<string[]>(profs);
@@ -26,6 +34,7 @@ export function ProfessorPicker({ profs }: { profs: string[] }) {
   const [addError, setAddError] = useState<string | null>(null);
   const [highlight, setHighlight] = useState(-1);
   const containerRef = useRef<HTMLDivElement>(null);
+  const isGlass = variant === "glass";
 
   useEffect(() => {
     const trimmed = query.trim().toLowerCase();
@@ -116,7 +125,12 @@ export function ProfessorPicker({ profs }: { profs: string[] }) {
 
       <div ref={containerRef} className="relative">
         {selectedProfessor ? (
-          <div className="flex h-8 items-center gap-2 rounded-lg border border-input px-2.5">
+          <div
+            className={cn(
+              "flex h-8 items-center gap-2 rounded-lg border px-2.5",
+              isGlass ? glassFieldClass : "border-input",
+            )}
+          >
             <span id="professor" className="min-w-0 flex-1 truncate text-sm">
               {selectedProfessor}
             </span>
@@ -143,9 +157,17 @@ export function ProfessorPicker({ profs }: { profs: string[] }) {
               placeholder={profs.length > 0 ? "Search professors" : "Search or add a professor"}
               autoComplete="off"
               required
+              className={isGlass ? glassFieldClass : undefined}
             />
             {showDropdown && (
-              <div className="absolute left-0 right-0 z-50 mt-1 overflow-hidden rounded-md border bg-popover shadow-lg">
+              <div
+                className={cn(
+                  "absolute left-0 right-0 z-50 mt-1 overflow-hidden rounded-xl border shadow-lg",
+                  isGlass
+                    ? cn(glassSurfaceClass, "bg-background/80")
+                    : "border bg-popover",
+                )}
+              >
                 <ul className="max-h-72 overflow-y-auto py-1 text-left text-sm">
                   {filtered.length === 0 && trimmedQuery.length > 0 ? (
                     <li className="px-3 py-2 text-muted-foreground">No matches.</li>
