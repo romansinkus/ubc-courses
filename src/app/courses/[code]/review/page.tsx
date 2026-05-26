@@ -1,4 +1,4 @@
-import { notFound, redirect } from "next/navigation";
+import { notFound } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -14,7 +14,7 @@ import { LiveBackground } from "@/components/live-background";
 import { db } from "@/db";
 import { courses, professors, reviews } from "@/db/schema";
 import { and, asc, eq, isNotNull } from "drizzle-orm";
-import { getCurrentProfile } from "@/lib/auth";
+import { requireCompleteProfile } from "@/lib/auth";
 import { generateTermOptions } from "@/lib/terms";
 import { ProfessorPicker } from "@/components/professor-picker";
 import { RatingBarInput } from "@/components/rating-bar";
@@ -47,10 +47,7 @@ export default async function WriteReviewPage({
   const { error } = await searchParams;
   const courseCode = decodeURIComponent(code).toUpperCase();
 
-  const profile = await getCurrentProfile();
-  if (!profile) {
-    redirect(`/login?next=${encodeURIComponent(`/courses/${courseCode}/review`)}`);
-  }
+  await requireCompleteProfile(`/courses/${courseCode}/review`);
 
   const [course] = await db.select().from(courses).where(eq(courses.code, courseCode)).limit(1);
   if (!course) notFound();

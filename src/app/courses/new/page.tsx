@@ -1,22 +1,16 @@
-import { redirect } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { getCurrentProfile } from "@/lib/auth";
+import { requireCompleteProfile } from "@/lib/auth";
 import { createCourse } from "./actions";
 
 type SearchParams = Promise<{ code?: string; error?: string }>;
 
 export default async function NewCoursePage({ searchParams }: { searchParams: SearchParams }) {
   const { code, error } = await searchParams;
-  const profile = await getCurrentProfile();
-  if (!profile) {
-    redirect(
-      `/login?next=${encodeURIComponent(`/courses/new${code ? `?code=${code}` : ""}`)}`,
-    );
-  }
+  await requireCompleteProfile(`/courses/new${code ? `?code=${encodeURIComponent(code)}` : ""}`);
 
   return (
     <div className="mx-auto max-w-xl px-4 py-10">

@@ -5,4 +5,3 @@
 * Make it manditory for a user to use ubc email
 * Scrap for more ubc courses
 * Don't allow users to add their own courses
-* Add the number of reviews that have been made, the number of users, and the number of documents uploaded

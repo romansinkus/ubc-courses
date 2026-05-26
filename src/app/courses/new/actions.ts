@@ -6,7 +6,7 @@ import { z } from "zod";
 import { db } from "@/db";
 import { courses } from "@/db/schema";
 import { eq } from "drizzle-orm";
-import { getCurrentProfile } from "@/lib/auth";
+import { requireCompleteProfile } from "@/lib/auth";
 
 const CODE_REGEX = /^([A-Z]{2,5})\s+(\d{3}[A-Z]?)$/i;
 
@@ -34,8 +34,7 @@ const NewCourseSchema = z.object({
 });
 
 export async function createCourse(formData: FormData) {
-  const profile = await getCurrentProfile();
-  if (!profile) redirect("/login");
+  await requireCompleteProfile("/courses/new");
 
   const parsed = NewCourseSchema.safeParse(Object.fromEntries(formData.entries()));
   if (!parsed.success) {

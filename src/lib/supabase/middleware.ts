@@ -23,7 +23,14 @@ export async function updateSession(request: NextRequest) {
     },
   );
 
-  await supabase.auth.getUser();
+  const { error } = await supabase.auth.getUser();
+
+  // Clear stale JWT cookies (e.g. deleted auth user). Do not sign out on
+  // AuthSessionMissingError — that also removes the PKCE code verifier needed
+  // for magic-link callback after signInWithOtp.
+  if (error && error.name !== "AuthSessionMissingError") {
+    await supabase.auth.signOut();
+  }
 
   return response;
 }

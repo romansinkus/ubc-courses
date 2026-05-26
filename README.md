@@ -58,6 +58,46 @@ In your Supabase dashboard, go to **Authentication → URL Configuration**:
 - **Site URL**: `http://localhost:3000` (and your production URL after deploying)
 - **Redirect URLs**: add `http://localhost:3000/auth/callback` and the production equivalent.
 
+#### Send auth emails through Resend (recommended)
+
+Supabase’s built-in email is limited to about **2 messages/hour**. For development and
+production, connect [Resend](https://resend.com) (free tier: 3,000 emails/month, 100/day).
+
+**Option A — One-click integration (easiest)**
+
+1. Create a free account at [resend.com](https://resend.com).
+2. Open [Resend → Integrations → Supabase](https://resend.com/settings/integrations).
+3. Click **Connect to Supabase**, pick your project, and follow the prompts (Resend creates
+   an API key and configures SMTP for you).
+
+**Option B — Manual SMTP**
+
+1. In Resend: **API Keys → Create API Key** (copy the key — shown once).
+2. In Supabase: **Authentication → Emails → SMTP Settings** → enable custom SMTP:
+
+   | Field | Value |
+   | --- | --- |
+   | Host | `smtp.resend.com` |
+   | Port | `465` |
+   | Username | `resend` |
+   | Password | your Resend API key |
+   | Sender email | see below |
+   | Sender name | `UBCourses` |
+
+3. **Sender email**
+   - **Quick local testing (no domain):** `onboarding@resend.dev` — magic links can only be
+     sent to the same email address you used to sign up for Resend.
+   - **Production / real users:** add and verify your domain in Resend, then use e.g.
+     `noreply@yourdomain.com`.
+
+4. In Supabase: **Authentication → Rate Limits** — after SMTP is enabled, raise **Emails
+   sent** (defaults to ~30/hour with custom SMTP; adjust as needed).
+
+5. Send a test magic link from `/login`. Check **Supabase → Authentication → Logs** and the
+   Resend dashboard if it fails.
+
+Docs: [Resend + Supabase SMTP](https://resend.com/docs/send-with-supabase-smtp)
+
 ### 6. Run it
 
 ```bash

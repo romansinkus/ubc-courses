@@ -12,10 +12,10 @@ import {
 } from "@/lib/glass-styles";
 import { signInWithMagicLink } from "./actions";
 
-type SearchParams = Promise<{ sent?: string; error?: string }>;
+type SearchParams = Promise<{ sent?: string; error?: string; next?: string }>;
 
 export default async function LoginPage({ searchParams }: { searchParams: SearchParams }) {
-  const { sent, error } = await searchParams;
+  const { sent, error, next } = await searchParams;
 
   return (
     <>
@@ -30,8 +30,8 @@ export default async function LoginPage({ searchParams }: { searchParams: Search
               Sign in to UBCourses
             </h1>
             <p className="mt-3 text-sm text-muted-foreground">
-              We&apos;ll email you a magic link — no password needed. First time signing in? Pick a
-              username below.
+              We&apos;ll email you a magic link — no password needed. New here? You&apos;ll pick a
+              username after your first sign-in.
             </p>
           </header>
 
@@ -43,34 +43,20 @@ export default async function LoginPage({ searchParams }: { searchParams: Search
             </section>
           ) : (
             <form action={signInWithMagicLink} className="space-y-6">
+              {next?.startsWith("/") && !next.startsWith("//") ? (
+                <input type="hidden" name="next" value={next} />
+              ) : null}
               <section className={glassFormSectionClass}>
-                <div className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="email">Email</Label>
-                    <Input
-                      id="email"
-                      name="email"
-                      type="email"
-                      required
-                      placeholder="you@ubc.ca"
-                      className={glassFieldClass}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="username">
-                      Username <span className="text-muted-foreground">(first sign-in only)</span>
-                    </Label>
-                    <Input
-                      id="username"
-                      name="username"
-                      type="text"
-                      minLength={3}
-                      maxLength={24}
-                      placeholder="e.g. john_d"
-                      pattern="[a-zA-Z0-9_]+"
-                      className={glassFieldClass}
-                    />
-                  </div>
+                <div className="space-y-2">
+                  <Label htmlFor="email">Email</Label>
+                  <Input
+                    id="email"
+                    name="email"
+                    type="email"
+                    required
+                    placeholder="you@ubc.ca"
+                    className={glassFieldClass}
+                  />
                 </div>
               </section>
 

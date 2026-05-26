@@ -1,8 +1,10 @@
 import { cache } from "react";
+import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { db } from "@/db";
 import { profiles } from "@/db/schema";
 import { eq } from "drizzle-orm";
+import { profileNeedsUsername } from "@/lib/username";
 
 export const getCurrentUser = cache(async () => {
   const supabase = await createClient();
@@ -24,3 +26,15 @@ export const getCurrentProfile = cache(async () => {
     return null;
   }
 });
+
+export async function requireCompleteProfile(nextPath?: string) {
+  const profile = await getCurrentProfile();
+  if (!profile) {
+    redirect(nextPath ? `/login?next=${encodeURIComponent(nextPath)}` : "/login");
+  }
+  if (profileNeedsUsername(profile)) {
+    const query = nextPath ? `?next=${encodeURIComponent(nextPath)}` : "";
+    redirect(`/welcome${query}`);
+  }
+  return profile;
+}

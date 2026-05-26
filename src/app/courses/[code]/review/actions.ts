@@ -6,7 +6,7 @@ import { z } from "zod";
 import { db } from "@/db";
 import { courses, professors, reviewFiles, reviews } from "@/db/schema";
 import { eq } from "drizzle-orm";
-import { getCurrentProfile } from "@/lib/auth";
+import { requireCompleteProfile } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { RATING_MAX, RATING_MIN } from "@/lib/ratings";
 import { parseTermValue } from "@/lib/terms";
@@ -51,8 +51,7 @@ const ReviewSchema = z.object({
 });
 
 export async function submitReview(formData: FormData) {
-  const profile = await getCurrentProfile();
-  if (!profile) redirect("/login");
+  const profile = await requireCompleteProfile();
 
   const parsed = ReviewSchema.safeParse(Object.fromEntries(formData.entries()));
   if (!parsed.success) {

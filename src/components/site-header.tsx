@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Compass, User } from "lucide-react";
 import { getCurrentProfile } from "@/lib/auth";
+import { profileNeedsUsername } from "@/lib/username";
 import { glassHeaderClass, glassNavIconButtonClass, glassNavLinkClass } from "@/lib/glass-styles";
 import { cn } from "@/lib/utils";
 
@@ -19,14 +20,21 @@ export async function SiteHeader() {
             Browse
           </Link>
           {profile ? (
-            <Link
-              href={`/u/${profile.username}`}
-              aria-label={`Open your profile, @${profile.username}`}
-              title={`@${profile.username}`}
-              className={glassNavIconButtonClass}
-            >
-              <User aria-hidden="true" />
-            </Link>
+            profileNeedsUsername(profile) ? (
+              <Link href="/welcome" className={glassNavLinkClass}>
+                <User aria-hidden="true" />
+                Finish setup
+              </Link>
+            ) : (
+              <Link
+                href={`/u/${profile.username}`}
+                aria-label={`Open your profile, @${profile.username}`}
+                title={`@${profile.username}`}
+                className={glassNavIconButtonClass}
+              >
+                <User aria-hidden="true" />
+              </Link>
+            )
           ) : (
             <Link href="/login" className={glassNavLinkClass}>
               <User aria-hidden="true" />

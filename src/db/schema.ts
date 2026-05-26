@@ -27,6 +27,7 @@ export const profiles = pgTable(
     username: text("username").notNull(),
     displayName: text("display_name"),
     bio: text("bio"),
+    usernameSetAt: timestamp("username_set_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   },
   (t) => [uniqueIndex("profiles_username_lower_idx").on(t.username)],
