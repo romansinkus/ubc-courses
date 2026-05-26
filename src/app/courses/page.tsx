@@ -12,13 +12,14 @@ type SearchParams = Promise<{
   subjects?: string;
   level?: string;
   term?: string;
+  page?: string;
 }>;
 
 export default function CoursesPage({ searchParams }: { searchParams: SearchParams }) {
   return (
     <>
       <LiveBackground />
-      <div className="relative mx-auto max-w-6xl px-4 lg:flex lg:h-[calc(100vh-3.5rem)] lg:flex-col">
+      <div className="relative mx-auto max-w-6xl px-4 lg:flex lg:flex-col">
         <div className="relative z-30 space-y-3 pb-8 pt-4 max-lg:sticky max-lg:top-14 lg:shrink-0">
           <h1 className="text-2xl font-bold">Browse courses</h1>
           <div className="max-w-xl">

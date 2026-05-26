@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { FileText, Paperclip, Plus } from "lucide-react";
+import { FileText, Paperclip } from "lucide-react";
 import { buttonVariants } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -34,18 +34,11 @@ export default async function CoursePage({ params }: { params: Params }) {
       <div className="mx-auto max-w-xl px-4 py-16 text-center space-y-4">
         <h1 className="text-3xl font-bold tracking-tight">{courseCode}</h1>
         <p className="text-muted-foreground">
-          This course isn&apos;t in our catalog yet. Want to add it so you and others can review
-          it?
+          This course isn&apos;t in our catalog. Try searching for a different code or browse
+          available courses.
         </p>
-        <div className="flex justify-center gap-2">
-          <Link
-            href={`/courses/new?code=${encodeURIComponent(courseCode)}`}
-            className={buttonVariants()}
-          >
-            <Plus className="h-4 w-4" />
-            Add {courseCode}
-          </Link>
-          <Link href="/courses" className={buttonVariants({ variant: "outline" })}>
+        <div className="flex justify-center">
+          <Link href="/courses" className={buttonVariants()}>
             Browse courses
           </Link>
         </div>

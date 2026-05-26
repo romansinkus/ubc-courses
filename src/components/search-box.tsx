@@ -2,7 +2,6 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Plus } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -122,11 +121,6 @@ export function SearchBox({
   const noResults =
     isSearching && !displayLoading && debouncedQuery === fetchedFor && suggestions.length === 0;
 
-  function goCreate() {
-    setOpen(false);
-    router.push(`/courses/new?code=${encodeURIComponent(trimmed)}`);
-  }
-
   const isGlass = variant === "glass";
 
   return (
@@ -182,20 +176,11 @@ export function SearchBox({
           {displayLoading && displaySuggestions.length === 0 ? (
             <div className="px-3 py-2 text-sm text-muted-foreground">Searching…</div>
           ) : displaySuggestions.length === 0 ? (
-            <div className="p-3 text-sm space-y-2">
+            <div className="p-3 text-sm">
               <p className="text-muted-foreground">
-                No courses match &ldquo;{trimmed}&rdquo;.
+                No courses match &ldquo;{trimmed}&rdquo;. Try a different search or browse the
+                catalog.
               </p>
-              <button
-                type="button"
-                onClick={goCreate}
-                className="flex w-full items-center gap-2 rounded-md border border-dashed px-3 py-2 text-left hover:bg-accent hover:text-accent-foreground"
-              >
-                <Plus className="h-4 w-4" />
-                <span>
-                  Add <span className="font-medium">{trimmed.toUpperCase()}</span> to the catalog
-                </span>
-              </button>
             </div>
           ) : (
             <ul className="max-h-80 overflow-y-auto py-1 text-left">
@@ -216,16 +201,6 @@ export function SearchBox({
                   </button>
                 </li>
               ))}
-              <li className="border-t mt-1 pt-1">
-                <button
-                  type="button"
-                  onClick={goCreate}
-                  className="flex w-full items-center gap-2 px-3 py-2 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground"
-                >
-                  <Plus className="h-4 w-4" />
-                  <span>Add a new course</span>
-                </button>
-              </li>
             </ul>
           )}
         </div>

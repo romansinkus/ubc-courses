@@ -4,12 +4,15 @@ import { parseTermValue } from "@/lib/terms";
 
 const LEVELS = new Set(["100", "200", "300", "400", "500"]);
 
+export const COURSES_PAGE_SIZE = 60;
+
 export type CourseFilters = {
   query?: string;
   selectedSubjects: string[];
   level: string;
   term: string;
   parsedTerm: ReturnType<typeof parseTermValue>;
+  page: number;
 };
 
 export function parseCourseFilters(params: {
@@ -17,6 +20,7 @@ export function parseCourseFilters(params: {
   subjects?: string;
   level?: string;
   term?: string;
+  page?: string;
 }): CourseFilters {
   const query = params.q?.trim();
   const selectedSubjects = params.subjects
@@ -25,8 +29,23 @@ export function parseCourseFilters(params: {
   const level = params.level && LEVELS.has(params.level) ? params.level : "all";
   const parsedTerm = parseTermValue(params.term);
   const term = parsedTerm ? params.term! : "all";
+  const page = Math.max(1, Number.parseInt(params.page ?? "1", 10) || 1);
 
-  return { query, selectedSubjects, level, term, parsedTerm };
+  return { query, selectedSubjects, level, term, parsedTerm, page };
+}
+
+export function buildCourseBrowseQuery(
+  filters: Pick<CourseFilters, "query" | "selectedSubjects" | "level" | "term">,
+  page = 1,
+): string {
+  const params = new URLSearchParams();
+  if (filters.query) params.set("q", filters.query);
+  if (filters.selectedSubjects.length) params.set("subjects", filters.selectedSubjects.join(","));
+  if (filters.level !== "all") params.set("level", filters.level);
+  if (filters.term !== "all") params.set("term", filters.term);
+  if (page > 1) params.set("page", String(page));
+  const qs = params.toString();
+  return qs ? `?${qs}` : "";
 }
 
 export function hasActiveCourseFilters(filters: CourseFilters): boolean {

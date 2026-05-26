@@ -7,6 +7,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Input } from "@/components/ui/input";
 import { generateTermOptions } from "@/lib/terms";
 import { TermFilterSelect } from "@/components/term-filter-select";
+import { cn } from "@/lib/utils";
 
 const LEVELS = [
   { value: "all", label: "Any level" },
@@ -37,6 +38,7 @@ export function CoursesFilters({
 
   function pushParams(updates: Record<string, string | null>) {
     const params = new URLSearchParams(searchParams.toString());
+    params.delete("page");
     for (const [key, value] of Object.entries(updates)) {
       if (!value) params.delete(key);
       else params.set(key, value);
@@ -74,8 +76,8 @@ export function CoursesFilters({
   }, [subjectQuery, subjects]);
 
   return (
-    <aside className="space-y-6">
-      <div className="flex items-center justify-between">
+    <aside className="flex h-full min-h-0 flex-col gap-4">
+      <div className="flex shrink-0 items-center justify-between">
         <h2 className="text-sm font-semibold">Filters</h2>
         {activeCount > 0 ? (
           <button
@@ -88,51 +90,60 @@ export function CoursesFilters({
         ) : null}
       </div>
 
-      <FilterSection title="Subject">
-        <Input
-          type="search"
-          value={subjectQuery}
-          onChange={(e) => setSubjectQuery(e.target.value)}
-          placeholder="Find a subject"
-          className="h-8 text-sm"
-        />
-        <ul className="max-h-72 space-y-2 overflow-y-auto pr-1">
-          {filteredSubjects.length === 0 ? (
-            <li className="text-xs text-muted-foreground">No subjects match.</li>
-          ) : (
-            filteredSubjects.map((s) => {
-              const checked = selectedSubjects.includes(s);
-              const id = `subj-${s}`;
-              return (
-                <li key={s} className="flex items-center gap-2">
-                  <Checkbox
-                    id={id}
-                    checked={checked}
-                    onCheckedChange={(c) => toggleSubject(s, c === true)}
-                  />
-                  <label
-                    htmlFor={id}
-                    className="text-sm leading-none cursor-pointer select-none"
-                  >
-                    {s}
-                  </label>
-                </li>
-              );
-            })
-          )}
-        </ul>
-      </FilterSection>
+      <section className="flex min-h-0 flex-1 flex-col gap-3">
+        <h3 className="shrink-0 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+          Subject
+        </h3>
+        <div className="flex min-h-0 flex-1 flex-col gap-2">
+          <Input
+            type="search"
+            value={subjectQuery}
+            onChange={(e) => setSubjectQuery(e.target.value)}
+            placeholder="Find a subject"
+            className="h-8 shrink-0 text-sm"
+          />
+          <ul className="min-h-0 flex-1 space-y-2 overflow-y-auto pr-1">
+            {filteredSubjects.length === 0 ? (
+              <li className="text-xs text-muted-foreground">No subjects match.</li>
+            ) : (
+              filteredSubjects.map((s) => {
+                const checked = selectedSubjects.includes(s);
+                const id = `subj-${s}`;
+                return (
+                  <li key={s} className="flex items-center gap-2">
+                    <Checkbox
+                      id={id}
+                      checked={checked}
+                      onCheckedChange={(c) => toggleSubject(s, c === true)}
+                    />
+                    <label
+                      htmlFor={id}
+                      className="cursor-pointer select-none text-sm leading-none"
+                    >
+                      {s}
+                    </label>
+                  </li>
+                );
+              })
+            )}
+          </ul>
+        </div>
+      </section>
 
-      <FilterSection title="Course level">
-        <RadioGroup value={level} onValueChange={setLevel} className="space-y-2">
+      <FilterSection title="Course level" className="shrink-0 space-y-1.5">
+        <RadioGroup
+          value={level}
+          onValueChange={setLevel}
+          className="grid grid-cols-2 gap-x-2 gap-y-1"
+        >
           {LEVELS.map((lvl) => {
             const id = `lvl-${lvl.value}`;
             return (
-              <div key={lvl.value} className="flex items-center gap-2">
-                <RadioGroupItem id={id} value={lvl.value} />
+              <div key={lvl.value} className="flex items-center gap-1.5">
+                <RadioGroupItem id={id} value={lvl.value} className="size-3.5" />
                 <label
                   htmlFor={id}
-                  className="text-sm leading-none cursor-pointer select-none"
+                  className="cursor-pointer select-none text-sm leading-none"
                 >
                   {lvl.label}
                 </label>
@@ -142,16 +153,24 @@ export function CoursesFilters({
         </RadioGroup>
       </FilterSection>
 
-      <FilterSection title="Term">
+      <FilterSection title="Term" className="shrink-0">
         <TermFilterSelect value={term} onValueChange={setTerm} options={termOptions} />
       </FilterSection>
     </aside>
   );
 }
 
-function FilterSection({ title, children }: { title: string; children: React.ReactNode }) {
+function FilterSection({
+  title,
+  children,
+  className,
+}: {
+  title: string;
+  children: React.ReactNode;
+  className?: string;
+}) {
   return (
-    <section className="space-y-3">
+    <section className={cn("space-y-3", className)}>
       <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
         {title}
       </h3>

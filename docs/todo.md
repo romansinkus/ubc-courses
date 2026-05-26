@@ -2,6 +2,6 @@
 * Add a metrics tab that shows different visuals. Also add a document search tab
   * Implement the visuals tab
   * Implement the document search tab
-* Make it manditory for a user to use ubc email
-* Scrap for more ubc courses
+
+* Scrape for more ubc courses
 * Don't allow users to add their own courses

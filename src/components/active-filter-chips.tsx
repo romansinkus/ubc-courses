@@ -30,6 +30,7 @@ export function ActiveFilterChips({
 
   function pushParams(updates: Record<string, string | null>) {
     const params = new URLSearchParams(searchParams.toString());
+    params.delete("page");
     for (const [key, value] of Object.entries(updates)) {
       if (!value) params.delete(key);
       else params.set(key, value);
