@@ -14,7 +14,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "UBCourses — Reviews of UBC courses",
+  title: "UBC-Courses — Reviews of UBC courses",
+  applicationName: "UBC-Courses",
   description: "Find honest student reviews of UBC courses, by course code.",
 };
 

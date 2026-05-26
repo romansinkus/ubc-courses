@@ -12,7 +12,7 @@ export async function SiteHeader() {
     <header className={cn("sticky top-0 z-40", glassHeaderClass)}>
       <div className="mx-auto flex h-14 max-w-5xl items-center justify-between px-4">
         <Link href="/" className="text-lg font-semibold tracking-tight">
-          UBCourses
+          UBC-Courses
         </Link>
         <nav className="flex items-center gap-2 text-sm">
           <Link href="/courses" className={glassNavLinkClass}>

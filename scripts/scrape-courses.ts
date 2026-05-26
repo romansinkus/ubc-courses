@@ -39,7 +39,7 @@ async function scrapeSubject(subject: string): Promise<ScrapedCourse[]> {
   const res = await fetch(url, {
     headers: {
       "User-Agent":
-        "Mozilla/5.0 (compatible; UBCoursesSeed/0.1; +https://github.com/)",
+        "Mozilla/5.0 (compatible; UBC-CoursesSeed/0.1; +https://github.com/)",
     },
   });
   if (!res.ok) {

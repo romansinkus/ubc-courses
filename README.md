@@ -1,4 +1,4 @@
-# UBCourses
+# UBC-Courses
 
 Honest reviews of UBC courses, written by students who took them. Think "Rate My Prof" but
 course-first: search by course code, see aggregate workload / difficulty / would-take-again, and
@@ -82,7 +82,7 @@ production, connect [Resend](https://resend.com) (free tier: 3,000 emails/month,
    | Username | `resend` |
    | Password | your Resend API key |
    | Sender email | see below |
-   | Sender name | `UBCourses` |
+   | Sender name | `UBC-Courses` |
 
 3. **Sender email**
    - **Quick local testing (no domain):** `onboarding@resend.dev` — magic links can only be

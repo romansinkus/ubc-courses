@@ -27,7 +27,7 @@ export default async function LoginPage({ searchParams }: { searchParams: Search
               Welcome back
             </p>
             <h1 className="mt-2 text-2xl font-bold tracking-tight sm:text-3xl">
-              Sign in to UBCourses
+              Sign in to UBC-Courses
             </h1>
             <p className="mt-3 text-sm text-muted-foreground">
               We&apos;ll email you a magic link — no password needed. New here? You&apos;ll pick a
@@ -54,9 +54,15 @@ export default async function LoginPage({ searchParams }: { searchParams: Search
                     name="email"
                     type="email"
                     required
-                    placeholder="you@ubc.ca"
+                    placeholder="you@gmail.com"
                     className={glassFieldClass}
                   />
+                  <p className="text-xs text-muted-foreground">
+                    <span className="font-semibold text-foreground">
+                      UBC emails may not work properly.
+                    </span>{" "}
+                    Use a personal address like Gmail if sign-in mail doesn&apos;t arrive.
+                  </p>
                 </div>
               </section>
 
