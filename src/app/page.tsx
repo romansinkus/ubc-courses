@@ -3,7 +3,6 @@ import { SearchBox } from "@/components/search-box";
 import { LiveBackground } from "@/components/live-background";
 import { HomeStats, HomeStatsSkeleton } from "@/components/home-stats";
 import { HomeFiltersButton } from "@/components/home-filters-button";
-import { HomeRecentReviews } from "@/components/home-recent-reviews";
 
 export const revalidate = 60;
 
@@ -11,7 +10,7 @@ export default function HomePage() {
   return (
     <>
       <LiveBackground />
-      <div className="relative mx-auto flex min-h-[calc(100vh-3.5rem)] w-full max-w-5xl flex-col justify-center px-4 pt-8 pb-44 space-y-12">
+      <div className="relative mx-auto flex min-h-[calc(100vh-3.5rem)] w-full max-w-5xl flex-col justify-center px-4 pt-8 pb-44">
         <section className="space-y-4 text-center">
           <Suspense fallback={<HomeStatsSkeleton />}>
             <HomeStats />
@@ -26,10 +25,6 @@ export default function HomePage() {
             </Suspense>
           </div>
         </section>
-
-        <Suspense fallback={null}>
-          <HomeRecentReviews />
-        </Suspense>
       </div>
     </>
   );

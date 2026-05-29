@@ -18,15 +18,17 @@ import { cn } from "@/lib/utils";
 import { glassFieldClass, glassSurfaceClass } from "@/lib/glass-styles";
 
 export function ProfessorPicker({
-  profs,
   variant = "default",
+  defaultProfessor = null,
 }: {
-  profs: string[];
   variant?: "default" | "glass";
+  defaultProfessor?: string | null;
 }) {
   const [query, setQuery] = useState("");
-  const [selectedProfessor, setSelectedProfessor] = useState<string | null>(null);
-  const [filtered, setFiltered] = useState<string[]>(profs);
+  const [debouncedQuery, setDebouncedQuery] = useState("");
+  const [fetchedFor, setFetchedFor] = useState("");
+  const [suggestions, setSuggestions] = useState<string[]>([]);
+  const [selectedProfessor, setSelectedProfessor] = useState<string | null>(defaultProfessor);
   const [open, setOpen] = useState(false);
   const [addOpen, setAddOpen] = useState(false);
   const [firstName, setFirstName] = useState("");
@@ -34,20 +36,53 @@ export function ProfessorPicker({
   const [addError, setAddError] = useState<string | null>(null);
   const [highlight, setHighlight] = useState(-1);
   const containerRef = useRef<HTMLDivElement>(null);
+  const abortRef = useRef<AbortController | null>(null);
   const isGlass = variant === "glass";
 
+  const trimmedQuery = query.trim();
+  const isSearching = trimmedQuery.length > 0;
+  const loading = isSearching && (trimmedQuery !== debouncedQuery || debouncedQuery !== fetchedFor);
+
   useEffect(() => {
-    const trimmed = query.trim().toLowerCase();
-    const timer = setTimeout(() => {
-      if (!trimmed) {
-        setFiltered(profs);
-      } else {
-        setFiltered(profs.filter((p) => p.toLowerCase().includes(trimmed)));
-      }
-      setHighlight(-1);
-    }, 250);
+    const timer = setTimeout(() => setDebouncedQuery(trimmedQuery), 250);
     return () => clearTimeout(timer);
-  }, [query, profs]);
+  }, [trimmedQuery]);
+
+  useEffect(() => {
+    if (!debouncedQuery) {
+      abortRef.current?.abort();
+      return;
+    }
+
+    abortRef.current?.abort();
+    const ctl = new AbortController();
+    abortRef.current = ctl;
+    let active = true;
+
+    void (async () => {
+      try {
+        const res = await fetch(`/api/professors/search?q=${encodeURIComponent(debouncedQuery)}`, {
+          signal: ctl.signal,
+        });
+        if (!res.ok || !active) return;
+        const data: { results: string[] } = await res.json();
+        if (!active) return;
+        setSuggestions(data.results);
+        setHighlight(-1);
+        setFetchedFor(debouncedQuery);
+      } catch (err) {
+        if ((err as Error).name !== "AbortError") {
+          console.error(err);
+          if (active) setFetchedFor(debouncedQuery);
+        }
+      }
+    })();
+
+    return () => {
+      active = false;
+      ctl.abort();
+    };
+  }, [debouncedQuery]);
 
   useEffect(() => {
     function onClick(e: MouseEvent) {
@@ -59,9 +94,8 @@ export function ProfessorPicker({
     return () => document.removeEventListener("mousedown", onClick);
   }, []);
 
-  const trimmedQuery = query.trim();
-  const showDropdown =
-    !selectedProfessor && open && (filtered.length > 0 || trimmedQuery.length >= 0);
+  const showDropdown = !selectedProfessor && open && isSearching;
+  const noMatches = isSearching && !loading && debouncedQuery === fetchedFor && suggestions.length === 0;
 
   function pick(prof: string) {
     setSelectedProfessor(prof);
@@ -90,7 +124,7 @@ export function ProfessorPicker({
       return;
     }
 
-    const existing = profs.find((p) => p.toLowerCase() === fullName.toLowerCase());
+    const existing = suggestions.find((p) => p.toLowerCase() === fullName.toLowerCase());
     pick(existing ?? fullName);
     setAddOpen(false);
     setFirstName("");
@@ -100,7 +134,7 @@ export function ProfessorPicker({
 
   function onKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
     if (!showDropdown) return;
-    const total = filtered.length + 1;
+    const total = suggestions.length + 1;
     if (e.key === "ArrowDown") {
       e.preventDefault();
       setHighlight((h) => (h + 1) % total);
@@ -109,8 +143,8 @@ export function ProfessorPicker({
       setHighlight((h) => (h <= 0 ? total - 1 : h - 1));
     } else if (e.key === "Enter") {
       e.preventDefault();
-      if (highlight >= 0 && highlight < filtered.length) {
-        pick(filtered[highlight]);
+      if (highlight >= 0 && highlight < suggestions.length) {
+        pick(suggestions[highlight]);
       } else {
         openAddDialog();
       }
@@ -149,12 +183,18 @@ export function ProfessorPicker({
               type="text"
               value={query}
               onChange={(e) => {
-                setQuery(e.target.value);
+                const value = e.target.value;
+                setQuery(value);
                 setOpen(true);
+                if (!value.trim()) {
+                  setSuggestions([]);
+                  setHighlight(-1);
+                  setFetchedFor("");
+                }
               }}
               onFocus={() => setOpen(true)}
               onKeyDown={onKeyDown}
-              placeholder={profs.length > 0 ? "Search professors" : "Search or add a professor"}
+              placeholder="Search professors"
               autoComplete="off"
               required
               className={isGlass ? glassFieldClass : undefined}
@@ -163,16 +203,16 @@ export function ProfessorPicker({
               <div
                 className={cn(
                   "absolute left-0 right-0 z-50 mt-1 overflow-hidden rounded-xl border shadow-lg",
-                  isGlass
-                    ? cn(glassSurfaceClass, "bg-background/80")
-                    : "border bg-popover",
+                  isGlass ? cn(glassSurfaceClass, "bg-background/80") : "border bg-popover",
                 )}
               >
                 <ul className="max-h-72 overflow-y-auto py-1 text-left text-sm">
-                  {filtered.length === 0 && trimmedQuery.length > 0 ? (
+                  {loading && suggestions.length === 0 ? (
+                    <li className="px-3 py-2 text-muted-foreground">Searching…</li>
+                  ) : noMatches ? (
                     <li className="px-3 py-2 text-muted-foreground">No matches.</li>
                   ) : (
-                    filtered.map((p, i) => (
+                    suggestions.map((p, i) => (
                       <li key={p}>
                         <button
                           type="button"
@@ -187,13 +227,13 @@ export function ProfessorPicker({
                       </li>
                     ))
                   )}
-                  <li className={filtered.length > 0 ? "mt-1 border-t pt-1" : ""}>
+                  <li className={suggestions.length > 0 ? "mt-1 border-t pt-1" : ""}>
                     <button
                       type="button"
-                      onMouseEnter={() => setHighlight(filtered.length)}
+                      onMouseEnter={() => setHighlight(suggestions.length)}
                       onClick={openAddDialog}
                       className={`flex w-full items-center gap-2 px-3 py-2 ${
-                        highlight === filtered.length ? "bg-accent text-accent-foreground" : ""
+                        highlight === suggestions.length ? "bg-accent text-accent-foreground" : ""
                       }`}
                     >
                       <Plus className="h-4 w-4" />

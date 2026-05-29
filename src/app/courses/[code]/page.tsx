@@ -1,48 +1,55 @@
 import Link from "next/link";
-import { FileText, Paperclip } from "lucide-react";
 import { buttonVariants } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { LiveBackground } from "@/components/live-background";
 import { db } from "@/db";
 import { courses, professors, profiles, reviewFiles, reviews } from "@/db/schema";
 import { desc, eq, inArray, sql } from "drizzle-orm";
-import { ASSESSMENT_TYPE_LABEL } from "@/components/assessment-type-picker";
-import { MEDIUM_LABEL } from "@/components/medium-picker";
 import {
   CourseAggregateSummary,
   normalizeCourseStats,
   resolveCourseStats,
 } from "@/components/course-aggregate-summary";
-import { WOULD_RECOMMEND_BADGE_LABEL } from "@/lib/would-recommend";
-import { RatingBarDisplay } from "@/components/rating-bar";
+import { CourseReviews, type CourseReviewCard } from "@/components/course-reviews";
+import { CourseDocuments, type CourseDocument } from "@/components/course-documents";
+import { CourseToggleCharts, type ToggleChart } from "@/components/course-toggle-charts";
+import { MEDIUM_LABEL } from "@/components/medium-picker";
+import { syllabusPdfPublicUrl } from "@/lib/syllabus";
+import { formatTermLabel } from "@/lib/terms";
+import { getCurrentUser } from "@/lib/auth";
+import { cn } from "@/lib/utils";
+import {
+  glassContentCardClass,
+  glassFormSectionTitleClass,
+  glassSurfaceClass,
+} from "@/lib/glass-styles";
 
 type Params = Promise<{ code: string }>;
-
-const TERM_LABEL: Record<string, string> = {
-  "1": "Term 1",
-  "2": "Term 2",
-  summer: "Summer",
-};
 
 export default async function CoursePage({ params }: { params: Params }) {
   const { code } = await params;
   const courseCode = decodeURIComponent(code).toUpperCase();
+  const currentUser = await getCurrentUser();
 
   const [course] = await db.select().from(courses).where(eq(courses.code, courseCode)).limit(1);
   if (!course) {
     return (
-      <div className="mx-auto max-w-xl px-4 py-16 text-center space-y-4">
-        <h1 className="text-3xl font-bold tracking-tight">{courseCode}</h1>
-        <p className="text-muted-foreground">
-          This course isn&apos;t in our catalog. Try searching for a different code or browse
-          available courses.
-        </p>
-        <div className="flex justify-center">
-          <Link href="/courses" className={buttonVariants()}>
-            Browse courses
-          </Link>
+      <>
+        <LiveBackground />
+        <div className="relative mx-auto max-w-xl px-4 py-16">
+          <div className={cn(glassSurfaceClass, "space-y-4 rounded-2xl p-6 text-center sm:p-8")}>
+            <h1 className="text-3xl font-bold tracking-tight">{courseCode}</h1>
+            <p className="text-muted-foreground">
+              This course isn&apos;t in our catalog. Try searching for a different code or browse
+              available courses.
+            </p>
+            <div className="flex justify-center">
+              <Link href="/courses" className={buttonVariants()}>
+                Browse courses
+              </Link>
+            </div>
+          </div>
         </div>
-      </div>
+      </>
     );
   }
 
@@ -61,6 +68,7 @@ export default async function CoursePage({ params }: { params: Params }) {
   const courseReviews = await db
     .select({
       id: reviews.id,
+      userId: reviews.userId,
       professor: professors.name,
       term: reviews.term,
       year: reviews.year,
@@ -70,12 +78,13 @@ export default async function CoursePage({ params }: { params: Params }) {
       enjoyability: reviews.enjoyability,
       usefulness: reviews.usefulness,
       medium: reviews.medium,
-      assessmentType: reviews.assessmentType,
+      hasFinalExam: reviews.hasFinalExam,
       workloadHours: reviews.workloadHours,
       wouldRecommend: reviews.wouldRecommend,
       groupwork: reviews.groupwork,
       body: reviews.body,
       syllabusUrl: reviews.syllabusUrl,
+      syllabusPath: reviews.syllabusPath,
       createdAt: reviews.createdAt,
       username: profiles.username,
     })
@@ -92,14 +101,18 @@ export default async function CoursePage({ params }: { params: Params }) {
           reviewId: reviewFiles.reviewId,
           url: reviewFiles.url,
           originalName: reviewFiles.originalName,
+          description: reviewFiles.description,
         })
         .from(reviewFiles)
         .where(inArray(reviewFiles.reviewId, reviewIds))
     : [];
-  const filesByReview = new Map<string, { url: string; originalName: string }[]>();
+  const filesByReview = new Map<
+    string,
+    { url: string; originalName: string; description: string | null }[]
+  >();
   for (const f of fileRows) {
     const list = filesByReview.get(f.reviewId) ?? [];
-    list.push({ url: f.url, originalName: f.originalName });
+    list.push({ url: f.url, originalName: f.originalName, description: f.description });
     filesByReview.set(f.reviewId, list);
   }
 
@@ -117,134 +130,195 @@ export default async function CoursePage({ params }: { params: Params }) {
     courseReviews,
   );
 
+  const dateFormat = new Intl.DateTimeFormat("en-US", {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+  });
+  const reviewCards: CourseReviewCard[] = courseReviews.map((r) => {
+    const syllabusPdfUrl = r.syllabusPath ? syllabusPdfPublicUrl(r.syllabusPath) : null;
+    const syllabusLink =
+      r.syllabusUrl && r.syllabusUrl !== syllabusPdfUrl ? r.syllabusUrl : null;
+    return {
+      id: r.id,
+      isOwn: currentUser?.id === r.userId,
+      professor: r.professor,
+      term: r.term,
+      year: r.year,
+      grade: r.grade,
+      overallRating: r.overallRating,
+      difficulty: r.difficulty,
+      enjoyability: r.enjoyability,
+      usefulness: r.usefulness,
+      medium: r.medium,
+      hasFinalExam: r.hasFinalExam,
+      workloadHours: r.workloadHours,
+      wouldRecommend: r.wouldRecommend,
+      groupwork: r.groupwork,
+      body: r.body,
+      username: r.username,
+      dateLabel: dateFormat.format(r.createdAt),
+      syllabusPdfUrl,
+      syllabusLink,
+      files: filesByReview.get(r.id) ?? [],
+    };
+  });
+
+  const syllabusLinkDocs: CourseDocument[] = reviewCards
+    .filter((r) => r.syllabusLink)
+    .map((r) => ({ url: r.syllabusLink!, name: "Syllabus link", by: r.username, kind: "link" }));
+  const syllabusPdfDocs: CourseDocument[] = reviewCards
+    .filter((r) => r.syllabusPdfUrl)
+    .map((r) => ({
+      url: r.syllabusPdfUrl!,
+      name: formatTermLabel(`${r.year}-${r.term}`),
+      by: r.username,
+      kind: "syllabus",
+    }));
+  const otherDocs: CourseDocument[] = reviewCards.flatMap((r) =>
+    r.files.map((f) => ({
+      url: f.url,
+      name: f.description ?? f.originalName,
+      by: r.username,
+      kind: "file" as const,
+    })),
+  );
+
+  const ratingBins = (get: (r: (typeof courseReviews)[number]) => number | null) => {
+    const counts = new Map<number, number>();
+    for (const r of courseReviews) {
+      const v = get(r);
+      if (v == null) continue;
+      counts.set(v, (counts.get(v) ?? 0) + 1);
+    }
+    return [...counts.entries()]
+      .sort((a, b) => b[0] - a[0])
+      .map(([value, count]) => ({ label: `${value}/10`, count }));
+  };
+  const workloadBins = () => {
+    const labels = ["0–4 h", "5–9 h", "10–14 h", "15–19 h", "20+ h"];
+    const counts = new Map<number, number>();
+    for (const r of courseReviews) {
+      if (r.workloadHours == null) continue;
+      const bucket = Math.min(4, Math.floor(r.workloadHours / 5));
+      counts.set(bucket, (counts.get(bucket) ?? 0) + 1);
+    }
+    return [...counts.entries()]
+      .sort((a, b) => a[0] - b[0])
+      .map(([bucket, count]) => ({ label: labels[bucket], count }));
+  };
+  const distributions = {
+    overall: ratingBins((r) => r.overallRating),
+    difficulty: ratingBins((r) => r.difficulty),
+    enjoyability: ratingBins((r) => r.enjoyability),
+    usefulness: ratingBins((r) => r.usefulness),
+    workload: workloadBins(),
+  };
+
+  const countReviews = (pred: (r: (typeof courseReviews)[number]) => boolean) =>
+    courseReviews.filter(pred).length;
+  // Shades of the UBC blue palette, ordered for contrast between adjacent segments.
+  const PIE_PALETTE = [
+    "var(--ubc-blue-600)",
+    "var(--ubc-blue-100)",
+    "var(--ubc-blue-500)",
+    "var(--ubc-blue-300)",
+  ];
+  const toggleChart = (
+    title: string,
+    entries: Array<{ label: string; value: number }>,
+  ): ToggleChart => ({
+    title,
+    segments: entries.map((e, i) => ({ ...e, color: PIE_PALETTE[i % PIE_PALETTE.length] })),
+  });
+  const toggleCharts: ToggleChart[] = [
+    toggleChart("Has a final exam", [
+      { label: "Yes", value: countReviews((r) => r.hasFinalExam === true) },
+      { label: "No", value: countReviews((r) => r.hasFinalExam === false) },
+    ]),
+    toggleChart("Groupwork", [
+      { label: "Yes", value: countReviews((r) => r.groupwork === true) },
+      { label: "Optional", value: countReviews((r) => r.groupwork === null) },
+      { label: "No", value: countReviews((r) => r.groupwork === false) },
+    ]),
+    toggleChart("Would recommend", [
+      { label: "Yes", value: countReviews((r) => r.wouldRecommend === "yes") },
+      { label: "Maybe", value: countReviews((r) => r.wouldRecommend === "maybe") },
+      { label: "No", value: countReviews((r) => r.wouldRecommend === "no") },
+    ]),
+    toggleChart("Course medium", [
+      { label: MEDIUM_LABEL.in_person, value: countReviews((r) => r.medium === "in_person") },
+      { label: MEDIUM_LABEL.hybrid, value: countReviews((r) => r.medium === "hybrid") },
+      { label: MEDIUM_LABEL.online, value: countReviews((r) => r.medium === "online") },
+    ]),
+  ];
+
   return (
-    <div className="mx-auto max-w-3xl px-4 py-10 space-y-8">
-      <header className="space-y-3">
-        <div className="flex items-start justify-between gap-4">
-          <div className="space-y-1">
-            <p className="text-sm text-muted-foreground">{course.subject}</p>
-            <h1 className="text-3xl font-bold tracking-tight">{course.code}</h1>
-            <p className="text-lg">{course.title}</p>
-            {stats.count > 0 && stats.avgRating != null ? (
-              <p className="text-sm text-muted-foreground">
-                {stats.count} review{stats.count === 1 ? "" : "s"} ·{" "}
-                <span className="font-medium text-foreground">
-                  {stats.avgRating.toFixed(1)}/10 overall
-                </span>
-              </p>
-            ) : null}
+    <>
+      <LiveBackground />
+      <div className="relative mx-auto max-w-3xl space-y-8 px-4 py-10 pb-16">
+        <div className={cn(glassSurfaceClass, "rounded-2xl p-6 sm:p-8")}>
+          <div className="flex items-start justify-between gap-4">
+            <div className="space-y-1">
+              <p className="text-sm text-muted-foreground">{course.subject}</p>
+              <h1 className="text-3xl font-bold tracking-tight">{course.code}</h1>
+              <p className="text-lg">{course.title}</p>
+              {stats.count > 0 && stats.avgRating != null ? (
+                <p className="text-sm text-muted-foreground">
+                  {stats.count} review{stats.count === 1 ? "" : "s"} ·{" "}
+                  <span className="font-medium text-foreground">
+                    {stats.avgRating.toFixed(1)}/10 overall
+                  </span>
+                </p>
+              ) : null}
+            </div>
+            <Link
+              href={`/courses/${encodeURIComponent(course.code)}/review`}
+              className={buttonVariants()}
+            >
+              Write a review
+            </Link>
           </div>
-          <Link
-            href={`/courses/${encodeURIComponent(course.code)}/review`}
-            className={buttonVariants()}
-          >
-            Write a review
-          </Link>
+          {course.description ? (
+            <p className="mt-3 text-sm text-muted-foreground">{course.description}</p>
+          ) : null}
         </div>
-        {course.description ? (
-          <p className="text-sm text-muted-foreground max-w-prose">{course.description}</p>
-        ) : null}
-      </header>
 
-      {stats.count > 0 ? (
-        <CourseAggregateSummary stats={stats} />
-      ) : (
-        <section className="rounded-xl border bg-muted/30 p-6 text-center text-muted-foreground">
-          <p className="mb-3">No reviews yet — be the first.</p>
-          <Link
-            href={`/courses/${encodeURIComponent(course.code)}/review`}
-            className={buttonVariants()}
-          >
-            Write a review
-          </Link>
-        </section>
-      )}
-
-      {courseReviews.length > 0 && (
-        <section className="space-y-4">
-          <h2 className="text-xl font-semibold">Reviews</h2>
-          <div className="space-y-3">
-            {courseReviews.map((r) => (
-              <Card key={r.id}>
-                <CardHeader className="pb-2 space-y-3">
-                  <CardTitle className="text-sm font-medium flex flex-wrap gap-2 items-center">
-                    {r.medium ? (
-                      <Badge variant="secondary">{MEDIUM_LABEL[r.medium]}</Badge>
-                    ) : null}
-                    {r.assessmentType ? (
-                      <Badge variant="secondary">
-                        {ASSESSMENT_TYPE_LABEL[r.assessmentType]}
-                      </Badge>
-                    ) : null}
-                    {r.groupwork != null ? (
-                      <Badge variant="secondary">Groupwork: {r.groupwork ? "Yes" : "No"}</Badge>
-                    ) : null}
-                    {r.workloadHours ? (
-                      <Badge variant="secondary">{r.workloadHours}h/wk</Badge>
-                    ) : null}
-                    {r.grade ? <Badge variant="secondary">Grade: {r.grade}</Badge> : null}
-                    {r.wouldRecommend ? (
-                      <Badge variant="secondary">
-                        {WOULD_RECOMMEND_BADGE_LABEL[r.wouldRecommend]}
-                      </Badge>
-                    ) : null}
-                    <Badge variant="outline">
-                      {TERM_LABEL[r.term]} {r.year}
-                    </Badge>
-                    {r.professor ? <Badge variant="outline">Prof. {r.professor}</Badge> : null}
-                    <span className="ml-auto text-xs text-muted-foreground font-normal">
-                      by{" "}
-                      <Link href={`/u/${r.username}`} className="hover:underline">
-                        @{r.username}
-                      </Link>
-                    </span>
-                  </CardTitle>
-                  <div className="grid gap-3 sm:grid-cols-2">
-                    <RatingBarDisplay label="Overall" value={r.overallRating} compact />
-                    <RatingBarDisplay label="Difficulty" value={r.difficulty} compact />
-                    {r.enjoyability != null ? (
-                      <RatingBarDisplay label="Enjoyability" value={r.enjoyability} compact />
-                    ) : null}
-                    {r.usefulness != null ? (
-                      <RatingBarDisplay label="Usefulness" value={r.usefulness} compact />
-                    ) : null}
-                  </div>
-                </CardHeader>
-                <CardContent className="space-y-3 text-sm">
-                  <p className="whitespace-pre-wrap">{r.body}</p>
-                  {(r.syllabusUrl || filesByReview.has(r.id)) && (
-                    <div className="flex flex-wrap gap-x-4 gap-y-1.5 pt-1">
-                      {r.syllabusUrl ? (
-                        <a
-                          href={r.syllabusUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="inline-flex items-center gap-1.5 text-xs font-medium text-primary hover:underline"
-                        >
-                          <FileText className="h-3.5 w-3.5" />
-                          View syllabus
-                        </a>
-                      ) : null}
-                      {(filesByReview.get(r.id) ?? []).map((f) => (
-                        <a
-                          key={f.url}
-                          href={f.url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="inline-flex items-center gap-1.5 text-xs font-medium text-primary hover:underline"
-                        >
-                          <Paperclip className="h-3.5 w-3.5" />
-                          {f.originalName}
-                        </a>
-                      ))}
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            ))}
+        {stats.count > 0 ? (
+          <section className={cn(glassContentCardClass, "space-y-6 p-6 sm:p-8")}>
+            <div className="flex flex-wrap items-baseline justify-between gap-2">
+              <h2 className="text-lg font-semibold">Course summary</h2>
+              <p className="text-sm font-medium tabular-nums text-muted-foreground">
+                {stats.count} review{stats.count === 1 ? "" : "s"}
+              </p>
+            </div>
+            <CourseAggregateSummary stats={stats} distributions={distributions} />
+            <CourseToggleCharts charts={toggleCharts} />
+            <CourseDocuments
+              syllabusLinks={syllabusLinkDocs}
+              syllabusPdfs={syllabusPdfDocs}
+              otherDocs={otherDocs}
+            />
+          </section>
+        ) : (
+          <div className={cn(glassContentCardClass, "p-6 text-center text-muted-foreground")}>
+            <p className="mb-3">No reviews yet — be the first.</p>
+            <Link
+              href={`/courses/${encodeURIComponent(course.code)}/review`}
+              className={buttonVariants()}
+            >
+              Write a review
+            </Link>
           </div>
-        </section>
-      )}
-    </div>
+        )}
+
+        {reviewCards.length > 0 && (
+          <section className="space-y-4">
+            <h2 className={cn(glassFormSectionTitleClass, "px-1 text-base")}>Reviews</h2>
+            <CourseReviews reviews={reviewCards} courseCode={course.code} />
+          </section>
+        )}
+      </div>
+    </>
   );
 }

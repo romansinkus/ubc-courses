@@ -104,7 +104,7 @@ export async function CoursesBrowseContent({
           <CoursesFilters
             subjects={subjects}
             selectedSubjects={filters.selectedSubjects}
-            level={filters.level}
+            selectedLevels={filters.selectedLevels}
             term={filters.term}
           />
         </Suspense>
@@ -120,7 +120,7 @@ export async function CoursesBrowseContent({
         <Suspense fallback={null}>
           <ActiveFilterChips
             selectedSubjects={filters.selectedSubjects}
-            level={filters.level}
+            selectedLevels={filters.selectedLevels}
             term={filters.term}
             query={filters.query}
           />

@@ -57,3 +57,6 @@ export const glassBadgeClass =
   "border-white/50 bg-background/45 text-foreground shadow-[inset_0_1px_0_rgba(255,255,255,0.3)] backdrop-blur-sm dark:border-white/20 dark:bg-background/20";
 
 export const glassDividerClass = "border-white/40 dark:border-white/15";
+
+export const glassTileClass =
+  "rounded-xl border border-white/50 bg-background/55 shadow-[inset_0_1px_0_rgba(255,255,255,0.4)] ring-1 ring-white/50 backdrop-blur-sm dark:border-white/15 dark:bg-background/20 dark:ring-white/10";

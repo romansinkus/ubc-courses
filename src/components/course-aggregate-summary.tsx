@@ -1,4 +1,5 @@
-import { RatingBarDisplay } from "@/components/rating-bar";
+import { StatCard, type DistributionBin } from "@/components/stat-card";
+import { TooltipProvider } from "@/components/ui/tooltip";
 
 export type CourseAggregateStats = {
   count: number;
@@ -7,6 +8,14 @@ export type CourseAggregateStats = {
   avgEnjoyability: number | null;
   avgUsefulness: number | null;
   avgWorkload: number | null;
+};
+
+export type CourseDistributions = {
+  overall: DistributionBin[];
+  difficulty: DistributionBin[];
+  enjoyability: DistributionBin[];
+  usefulness: DistributionBin[];
+  workload: DistributionBin[];
 };
 
 function asNumber(value: unknown): number | null {
@@ -73,42 +82,59 @@ export function resolveCourseStats(
   return statsFromReviews(reviews);
 }
 
-export function CourseAggregateSummary({ stats }: { stats: CourseAggregateStats }) {
+export function CourseAggregateSummary({
+  stats,
+  distributions,
+}: {
+  stats: CourseAggregateStats;
+  distributions: CourseDistributions;
+}) {
   if (stats.count <= 0) return null;
 
   return (
-    <section
-      aria-labelledby="course-summary-heading"
-      className="rounded-xl border bg-muted/30 p-5 space-y-5"
-    >
-      <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <h2 id="course-summary-heading" className="text-lg font-semibold">
-          Course summary
-        </h2>
-        <p className="text-sm font-medium tabular-nums">
-          {stats.count} review{stats.count === 1 ? "" : "s"}
-        </p>
-      </div>
-      <div className="grid gap-4 sm:grid-cols-2">
+    <TooltipProvider delay={150}>
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
         {stats.avgRating != null ? (
-          <RatingBarDisplay label="Overall" value={stats.avgRating} average />
+          <StatCard
+            label="Overall"
+            value={stats.avgRating.toFixed(1)}
+            unit="/10"
+            distribution={distributions.overall}
+          />
         ) : null}
         {stats.avgDifficulty != null ? (
-          <RatingBarDisplay label="Difficulty" value={stats.avgDifficulty} average />
+          <StatCard
+            label="Difficulty"
+            value={stats.avgDifficulty.toFixed(1)}
+            unit="/10"
+            distribution={distributions.difficulty}
+          />
         ) : null}
         {stats.avgEnjoyability != null ? (
-          <RatingBarDisplay label="Enjoyability" value={stats.avgEnjoyability} average />
+          <StatCard
+            label="Enjoyability"
+            value={stats.avgEnjoyability.toFixed(1)}
+            unit="/10"
+            distribution={distributions.enjoyability}
+          />
         ) : null}
         {stats.avgUsefulness != null ? (
-          <RatingBarDisplay label="Usefulness" value={stats.avgUsefulness} average />
+          <StatCard
+            label="Usefulness"
+            value={stats.avgUsefulness.toFixed(1)}
+            unit="/10"
+            distribution={distributions.usefulness}
+          />
+        ) : null}
+        {stats.avgWorkload != null ? (
+          <StatCard
+            label="Workload"
+            value={stats.avgWorkload.toFixed(1)}
+            unit="h/wk"
+            distribution={distributions.workload}
+          />
         ) : null}
       </div>
-      {stats.avgWorkload != null ? (
-        <div className="flex items-baseline justify-between gap-2 border-t pt-4 text-sm">
-          <span className="text-muted-foreground">Avg workload</span>
-          <span className="font-medium tabular-nums">{stats.avgWorkload.toFixed(1)} h/wk</span>
-        </div>
-      ) : null}
-    </section>
+    </TooltipProvider>
   );
 }

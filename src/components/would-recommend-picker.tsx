@@ -1,23 +1,20 @@
 import { cn } from "@/lib/utils";
 import { glassSegmentedControlClass, glassSegmentedOptionClass } from "@/lib/glass-styles";
+import { WOULD_RECOMMEND_LABEL, type WouldRecommend } from "@/lib/would-recommend";
 
-const OPTIONS = [
-  { value: "no", label: "No" },
-  { value: "yes", label: "Yes" },
-] as const;
+const OPTIONS: { value: WouldRecommend; label: string }[] = (
+  ["no", "maybe", "yes"] as const
+).map((value) => ({
+  value,
+  label: WOULD_RECOMMEND_LABEL[value],
+}));
 
-type YesNoValue = (typeof OPTIONS)[number]["value"];
-
-export function YesNoPicker({
-  name,
-  defaultValue = "no",
+export function WouldRecommendPicker({
+  defaultValue = "maybe",
   variant = "default",
-  required = true,
 }: {
-  name: string;
-  defaultValue?: YesNoValue;
+  defaultValue?: WouldRecommend;
   variant?: "default" | "glass";
-  required?: boolean;
 }) {
   const isGlass = variant === "glass";
 
@@ -32,10 +29,10 @@ export function YesNoPicker({
         <label key={opt.value} className="flex-1 cursor-pointer">
           <input
             type="radio"
-            name={name}
+            name="wouldRecommend"
             value={opt.value}
-            defaultChecked={opt.value === defaultValue}
-            required={required}
+            defaultChecked={defaultValue === opt.value}
+            required
             className="peer sr-only"
           />
           <span
@@ -53,18 +50,4 @@ export function YesNoPicker({
       ))}
     </div>
   );
-}
-
-export function finalExamLabel(hasFinalExam: boolean): string {
-  return hasFinalExam ? "Final exam" : "No final exam";
-}
-
-export function AssessmentTypePicker({
-  defaultValue = "no",
-  variant = "default",
-}: {
-  defaultValue?: YesNoValue;
-  variant?: "default" | "glass";
-}) {
-  return <YesNoPicker name="hasFinalExam" defaultValue={defaultValue} variant={variant} />;
 }

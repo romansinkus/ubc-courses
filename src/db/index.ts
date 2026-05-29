@@ -24,13 +24,12 @@ function getDb(): Db {
     globalForDb.__pgClient ??
     postgres(connectionString, {
       prepare: false,
-      // Supabase pooler (transaction mode) + pipelining deadlocks when concurrent
-      // queries exceed max; see https://github.com/porsager/postgres/issues/970
+      // Supabase transaction pooler (port 6543) does not support BEGIN/COMMIT;
+      // keep a small pool for concurrent reads within a single request.
       max: 3,
       idle_timeout: 20,
-      // postgres.js supports this at runtime; bundled types are behind 3.4.x
-      max_pipeline: 0,
-    } as Parameters<typeof postgres>[1]);
+      connect_timeout: 15,
+    });
 
   globalForDb.__pgClient = client;
 

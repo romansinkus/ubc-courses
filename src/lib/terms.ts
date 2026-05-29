@@ -39,6 +39,10 @@ export function parseTermValue(value: string | undefined | null): ParsedTerm | n
   return { year, term: m[2] as ParsedTerm["term"] };
 }
 
+export function formatTermValue(year: number, term: ParsedTerm["term"]): string {
+  return `${year}-${term}`;
+}
+
 export function formatTermLabel(value: string): string {
   const parsed = parseTermValue(value);
   if (!parsed) return value;

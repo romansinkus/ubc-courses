@@ -55,7 +55,7 @@ export function FiltersButton({
           <CoursesFilters
             subjects={subjects}
             selectedSubjects={[]}
-            level="all"
+            selectedLevels={[]}
             term="all"
           />
         </div>

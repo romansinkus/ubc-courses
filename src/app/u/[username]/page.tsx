@@ -7,9 +7,10 @@ import { LiveBackground } from "@/components/live-background";
 import { db } from "@/db";
 import { courses, professors, profiles, reviews } from "@/db/schema";
 import { desc, eq } from "drizzle-orm";
-import { ASSESSMENT_TYPE_LABEL } from "@/components/assessment-type-picker";
+import { finalExamLabel } from "@/components/assessment-type-picker";
 import { MEDIUM_LABEL } from "@/components/medium-picker";
 import { RatingBarDisplay } from "@/components/rating-bar";
+import { ReviewOwnerActions } from "@/components/review-owner-actions";
 import { getCurrentUser } from "@/lib/auth";
 import { signOut } from "@/app/login/actions";
 import { cn } from "@/lib/utils";
@@ -58,7 +59,7 @@ export default async function UserProfilePage({ params }: { params: Params }) {
       enjoyability: reviews.enjoyability,
       usefulness: reviews.usefulness,
       medium: reviews.medium,
-      assessmentType: reviews.assessmentType,
+      hasFinalExam: reviews.hasFinalExam,
       groupwork: reviews.groupwork,
       body: reviews.body,
       createdAt: reviews.createdAt,
@@ -116,14 +117,23 @@ export default async function UserProfilePage({ params }: { params: Params }) {
             {userReviews.map((r) => (
               <article key={r.id} className={glassContentCardClass}>
                 <div className="space-y-3">
-                  <div className="flex flex-wrap items-center gap-2 text-sm font-medium">
-                    <Link
-                      href={`/courses/${encodeURIComponent(r.courseCode)}`}
-                      className="hover:underline"
-                    >
-                      {r.courseCode}
-                    </Link>
-                    <span className="text-muted-foreground font-normal">· {r.courseTitle}</span>
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div className="flex flex-wrap items-center gap-2 text-sm font-medium">
+                      <Link
+                        href={`/courses/${encodeURIComponent(r.courseCode)}`}
+                        className="hover:underline"
+                      >
+                        {r.courseCode}
+                      </Link>
+                      <span className="text-muted-foreground font-normal">· {r.courseTitle}</span>
+                    </div>
+                    {isOwnProfile ? (
+                      <ReviewOwnerActions
+                        reviewId={r.id}
+                        courseCode={r.courseCode}
+                        variant="glass"
+                      />
+                    ) : null}
                   </div>
 
                   <div className="grid gap-3 sm:grid-cols-2">
@@ -143,9 +153,9 @@ export default async function UserProfilePage({ params }: { params: Params }) {
                         {MEDIUM_LABEL[r.medium]}
                       </Badge>
                     ) : null}
-                    {r.assessmentType ? (
+                    {r.hasFinalExam != null ? (
                       <Badge variant="secondary" className={glassBadgeClass}>
-                        {ASSESSMENT_TYPE_LABEL[r.assessmentType]}
+                        {finalExamLabel(r.hasFinalExam)}
                       </Badge>
                     ) : null}
                     {r.groupwork != null ? (

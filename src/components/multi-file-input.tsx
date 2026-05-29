@@ -19,6 +19,10 @@ export function MultiFileInput({
   maxSizeBytes = 5 * 1024 * 1024,
   buttonLabel = "Add file",
   variant = "default",
+  descriptionName,
+  descriptionLabel = "Name",
+  descriptionPlaceholder = "Add a description (optional)",
+  descriptionRequired = false,
 }: {
   name: string;
   accept: string;
@@ -26,9 +30,16 @@ export function MultiFileInput({
   maxSizeBytes?: number;
   buttonLabel?: string;
   variant?: "default" | "glass";
+  /** When set, renders a text input per file submitted under this field name. */
+  descriptionName?: string;
+  descriptionLabel?: string;
+  descriptionPlaceholder?: string;
+  descriptionRequired?: boolean;
 }) {
   const [files, setFiles] = useState<File[]>([]);
+  const [descriptions, setDescriptions] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const withDescriptions = !!descriptionName;
   // Hidden input that actually gets submitted with the form. We keep its
   // FileList in sync with `files` via DataTransfer so the server action reads
   // them under `name` exactly as a native multi-file input would.
@@ -62,11 +73,16 @@ export function MultiFileInput({
       next.push(f);
     }
     setError(nextError);
+    const addedCount = next.length - files.length;
+    if (addedCount > 0) {
+      setDescriptions((prev) => [...prev, ...Array<string>(addedCount).fill("")]);
+    }
     sync(next);
   }
 
   function remove(index: number) {
     setError(null);
+    setDescriptions((prev) => prev.filter((_, i) => i !== index));
     sync(files.filter((_, i) => i !== index));
   }
 
@@ -75,7 +91,14 @@ export function MultiFileInput({
 
   return (
     <div className="space-y-2">
-      <input ref={submitRef} type="file" name={name} multiple className="hidden" tabIndex={-1} />
+      <input
+        ref={submitRef}
+        type="file"
+        name={name}
+        multiple={maxFiles > 1}
+        className="hidden"
+        tabIndex={-1}
+      />
       <input
         ref={pickerRef}
         type="file"
@@ -92,23 +115,49 @@ export function MultiFileInput({
             <li
               key={`${f.name}-${f.size}-${i}`}
               className={cn(
-                "flex items-center gap-2 text-sm",
-                isGlass
-                  ? glassFileRowClass
-                  : "rounded-lg border border-input px-2.5 py-1.5",
+                "text-sm",
+                withDescriptions ? "flex flex-col gap-2" : "flex items-center gap-2",
+                isGlass ? glassFileRowClass : "rounded-lg border border-input px-2.5 py-1.5",
               )}
             >
-              <Paperclip className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-              <span className="min-w-0 flex-1 truncate">{f.name}</span>
-              <span className="shrink-0 text-xs text-muted-foreground">{formatSize(f.size)}</span>
-              <button
-                type="button"
-                onClick={() => remove(i)}
-                aria-label={`Remove ${f.name}`}
-                className="shrink-0 rounded-sm text-muted-foreground hover:text-foreground"
-              >
-                <X className="h-4 w-4" />
-              </button>
+              <div className="flex w-full min-w-0 items-center gap-2">
+                <Paperclip className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                <span className="min-w-0 flex-1 truncate" title={f.name}>
+                  {f.name}
+                </span>
+                <span className="shrink-0 text-xs text-muted-foreground">{formatSize(f.size)}</span>
+                <button
+                  type="button"
+                  onClick={() => remove(i)}
+                  aria-label={`Remove ${f.name}`}
+                  className="shrink-0 rounded-sm text-muted-foreground hover:text-foreground"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+              {withDescriptions ? (
+                <label className="flex items-center gap-2 pl-[1.375rem]">
+                  <span className="shrink-0 text-xs font-medium text-muted-foreground">
+                    {descriptionLabel}
+                    {descriptionRequired ? <span className="text-red-600"> *</span> : null}
+                  </span>
+                  <input
+                    type="text"
+                    name={descriptionName}
+                    required={descriptionRequired}
+                    value={descriptions[i] ?? ""}
+                    onChange={(e) =>
+                      setDescriptions((prev) =>
+                        prev.map((d, idx) => (idx === i ? e.target.value : d)),
+                      )
+                    }
+                    placeholder={descriptionPlaceholder}
+                    maxLength={200}
+                    aria-label={`${descriptionLabel} for ${f.name}`}
+                    className="min-w-0 flex-1 rounded-md border border-ubc-blue-300/60 bg-background/80 px-2.5 py-1.5 text-sm shadow-[inset_0_1px_2px_rgba(0,33,69,0.06)] outline-none placeholder:text-muted-foreground/80 focus-visible:border-ubc-blue-400 focus-visible:ring-2 focus-visible:ring-ubc-blue-400/30 dark:border-white/25 dark:bg-background/40"
+                  />
+                </label>
+              ) : null}
             </li>
           ))}
         </ul>

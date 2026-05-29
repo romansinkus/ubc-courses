@@ -10,13 +10,11 @@ import {
   index,
   uniqueIndex,
 } from "drizzle-orm/pg-core";
-import { relations } from "drizzle-orm";
+import { relations, sql } from "drizzle-orm";
 
 export const termEnum = pgEnum("term", ["1", "2", "summer"]);
 
 export const courseMediumEnum = pgEnum("course_medium", ["in_person", "hybrid", "online"]);
-
-export const assessmentTypeEnum = pgEnum("assessment_type", ["exam", "project", "both"]);
 
 export const wouldRecommendEnum = pgEnum("would_recommend", ["yes", "no", "maybe"]);
 
@@ -40,7 +38,7 @@ export const professors = pgTable(
     name: text("name").notNull(),
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   },
-  (t) => [uniqueIndex("professors_name_idx").on(t.name)],
+  (t) => [uniqueIndex("professors_name_lower_idx").on(sql`lower(${t.name})`)],
 );
 
 export const courses = pgTable(
@@ -82,7 +80,7 @@ export const reviews = pgTable(
     enjoyability: smallint("enjoyability"),
     usefulness: smallint("usefulness"),
     medium: courseMediumEnum("medium"),
-    assessmentType: assessmentTypeEnum("assessment_type"),
+    hasFinalExam: boolean("has_final_exam"),
     workloadHours: smallint("workload_hours"),
     wouldRecommend: wouldRecommendEnum("would_recommend"),
     groupwork: boolean("groupwork"),
@@ -108,6 +106,7 @@ export const reviewFiles = pgTable(
     storagePath: text("storage_path").notNull(),
     url: text("url").notNull(),
     originalName: text("original_name").notNull(),
+    description: text("description"),
     contentType: text("content_type").notNull(),
     sizeBytes: integer("size_bytes").notNull(),
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),

@@ -3,31 +3,24 @@
 import { useRouter, useSearchParams } from "next/navigation";
 import { useMemo, useState } from "react";
 import { Checkbox } from "@/components/ui/checkbox";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Input } from "@/components/ui/input";
 import { generateTermOptions } from "@/lib/terms";
+import { LEVEL_LABEL } from "@/lib/course-filters";
 import { TermFilterSelect } from "@/components/term-filter-select";
 import { cn } from "@/lib/utils";
 
-const LEVELS = [
-  { value: "all", label: "Any level" },
-  { value: "100", label: "100-level" },
-  { value: "200", label: "200-level" },
-  { value: "300", label: "300-level" },
-  { value: "400", label: "400-level" },
-  { value: "500", label: "500+ (grad)" },
-];
+const LEVELS = ["100", "200", "300", "400", "500"] as const;
 
 export function CoursesFilters({
   subjects,
   selectedSubjects,
-  level,
+  selectedLevels,
   term,
   basePath = "/courses",
 }: {
   subjects: string[];
   selectedSubjects: string[];
-  level: string;
+  selectedLevels: string[];
   term: string;
   basePath?: string;
 }) {
@@ -54,8 +47,11 @@ export function CoursesFilters({
     pushParams({ subjects: next.length ? next.join(",") : null });
   }
 
-  function setLevel(value: string | null) {
-    pushParams({ level: !value || value === "all" ? null : value });
+  function toggleLevel(level: string, checked: boolean) {
+    const next = checked
+      ? Array.from(new Set([...selectedLevels, level]))
+      : selectedLevels.filter((l) => l !== level);
+    pushParams({ level: next.length ? next.join(",") : null });
   }
 
   function setTerm(value: string | null) {
@@ -67,7 +63,7 @@ export function CoursesFilters({
   }
 
   const activeCount =
-    selectedSubjects.length + (level !== "all" ? 1 : 0) + (term !== "all" ? 1 : 0);
+    selectedSubjects.length + selectedLevels.length + (term !== "all" ? 1 : 0);
 
   const filteredSubjects = useMemo(() => {
     const q = subjectQuery.trim().toUpperCase();
@@ -131,26 +127,27 @@ export function CoursesFilters({
       </section>
 
       <FilterSection title="Course level" className="shrink-0 space-y-1.5">
-        <RadioGroup
-          value={level}
-          onValueChange={setLevel}
-          className="grid grid-cols-2 gap-x-2 gap-y-1"
-        >
+        <ul className="grid grid-cols-2 gap-x-2 gap-y-1">
           {LEVELS.map((lvl) => {
-            const id = `lvl-${lvl.value}`;
+            const checked = selectedLevels.includes(lvl);
+            const id = `lvl-${lvl}`;
             return (
-              <div key={lvl.value} className="flex items-center gap-1.5">
-                <RadioGroupItem id={id} value={lvl.value} className="size-3.5" />
+              <li key={lvl} className="flex items-center gap-1.5">
+                <Checkbox
+                  id={id}
+                  checked={checked}
+                  onCheckedChange={(c) => toggleLevel(lvl, c === true)}
+                />
                 <label
                   htmlFor={id}
                   className="cursor-pointer select-none text-sm leading-none"
                 >
-                  {lvl.label}
+                  {LEVEL_LABEL[lvl]}
                 </label>
-              </div>
+              </li>
             );
           })}
-        </RadioGroup>
+        </ul>
       </FilterSection>
 
       <FilterSection title="Term" className="shrink-0">

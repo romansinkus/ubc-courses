@@ -2,31 +2,26 @@
 
 import { useRouter, useSearchParams } from "next/navigation";
 import { X } from "lucide-react";
+import { LEVEL_LABEL } from "@/lib/course-filters";
 import { formatTermLabel } from "@/lib/terms";
-
-const LEVEL_LABEL: Record<string, string> = {
-  "100": "100-level",
-  "200": "200-level",
-  "300": "300-level",
-  "400": "400-level",
-  "500": "500+ (grad)",
-};
 
 export function ActiveFilterChips({
   selectedSubjects,
-  level,
+  selectedLevels,
   term,
   query,
 }: {
   selectedSubjects: string[];
-  level: string;
+  selectedLevels: string[];
   term: string;
   query?: string;
 }) {
   const router = useRouter();
   const searchParams = useSearchParams();
 
-  if (selectedSubjects.length === 0 && level === "all" && term === "all" && !query) return null;
+  if (selectedSubjects.length === 0 && selectedLevels.length === 0 && term === "all" && !query) {
+    return null;
+  }
 
   function pushParams(updates: Record<string, string | null>) {
     const params = new URLSearchParams(searchParams.toString());
@@ -44,6 +39,11 @@ export function ActiveFilterChips({
     pushParams({ subjects: next.length ? next.join(",") : null });
   }
 
+  function removeLevel(level: string) {
+    const next = selectedLevels.filter((l) => l !== level);
+    pushParams({ level: next.length ? next.join(",") : null });
+  }
+
   return (
     <div className="flex flex-wrap items-center gap-1.5">
       {query ? (
@@ -52,9 +52,13 @@ export function ActiveFilterChips({
       {selectedSubjects.map((s) => (
         <Chip key={s} label={s} onRemove={() => removeSubject(s)} />
       ))}
-      {level !== "all" ? (
-        <Chip label={LEVEL_LABEL[level] ?? level} onRemove={() => pushParams({ level: null })} />
-      ) : null}
+      {selectedLevels.map((level) => (
+        <Chip
+          key={level}
+          label={LEVEL_LABEL[level] ?? level}
+          onRemove={() => removeLevel(level)}
+        />
+      ))}
       {term !== "all" ? (
         <Chip label={formatTermLabel(term)} onRemove={() => pushParams({ term: null })} />
       ) : null}

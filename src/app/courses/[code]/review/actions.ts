@@ -2,213 +2,316 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { z } from "zod";
+import { and, eq, inArray } from "drizzle-orm";
 import { db } from "@/db";
-import { courses, professors, reviewFiles, reviews } from "@/db/schema";
-import { eq } from "drizzle-orm";
+import { courses, reviewFiles, reviews } from "@/db/schema";
 import { requireCompleteProfile } from "@/lib/auth";
+import {
+  parseReviewFormData,
+  reviewFieldsFromForm,
+} from "@/lib/review-form-schema";
+import { getReviewStoragePaths, requireOwnReview, resolveProfessorId } from "@/lib/review-db";
+import {
+  FILES_BUCKET,
+  MAX_FILE_COUNT,
+  removeStorageObjects,
+  resolveSyllabusUrls,
+  uploadReviewFiles,
+  uploadSyllabusPdf,
+  type StoredObject,
+} from "@/lib/review-storage";
 import { createClient } from "@/lib/supabase/server";
-import { RATING_MAX, RATING_MIN } from "@/lib/ratings";
-import { parseTermValue } from "@/lib/terms";
+import { SYLLABUS_BUCKET } from "@/lib/syllabus";
 
-const SYLLABUS_BUCKET = "syllabi";
-const FILES_BUCKET = "review-files";
-const MAX_FILE_BYTES = 5 * 1024 * 1024; // 5MB per file
-const MAX_FILE_COUNT = 5;
-
-// Allowed attachment types → file extension used for the stored object.
-const EXT_BY_TYPE: Record<string, string> = {
-  "application/pdf": "pdf",
-  "image/png": "png",
-  "image/jpeg": "jpg",
-  "image/webp": "webp",
-  "text/plain": "txt",
-  "application/msword": "doc",
-  "application/vnd.openxmlformats-officedocument.wordprocessingml.document": "docx",
-};
-
-const ReviewSchema = z.object({
-  courseCode: z.string().min(1),
-  professor: z.string().trim().min(1, "Pick or add a professor").max(120),
-  termYear: z
-    .string()
-    .min(1)
-    .refine((v) => parseTermValue(v) !== null, "Pick a valid term"),
-  grade: z.enum(["A+", "A", "A-", "B+", "B", "B-", "C+", "C", "C-", "D", "F", "Credit"]),
-  overallRating: z.coerce.number().int().min(RATING_MIN).max(RATING_MAX),
-  difficulty: z.coerce.number().int().min(RATING_MIN).max(RATING_MAX),
-  enjoyability: z.coerce.number().int().min(RATING_MIN).max(RATING_MAX),
-  usefulness: z.coerce.number().int().min(RATING_MIN).max(RATING_MAX),
-  medium: z.enum(["in_person", "hybrid", "online"]),
-  assessmentType: z.enum(["exam", "project", "both"]),
-  workloadHours: z.preprocess(
-    (v) => (v === "" || v === null || v === undefined ? undefined : v),
-    z.coerce.number().int().min(0).max(80).optional(),
-  ),
-  wouldRecommend: z.enum(["yes", "no", "maybe"]).optional(),
-  groupwork: z.enum(["yes", "no"]),
-  body: z.string().trim().min(20).max(5000),
-});
-
-export async function submitReview(formData: FormData) {
-  const profile = await requireCompleteProfile();
-
-  const parsed = ReviewSchema.safeParse(Object.fromEntries(formData.entries()));
-  if (!parsed.success) {
-    const flat = parsed.error.flatten();
-    const firstError =
-      Object.values(flat.fieldErrors).flat()[0] ?? flat.formErrors[0] ?? "Invalid input";
-    const code = String(formData.get("courseCode") ?? "");
-    redirect(
-      `/courses/${encodeURIComponent(code)}/review?error=${encodeURIComponent(firstError)}`,
-    );
+function reviewSaveErrorMessage(err: unknown): string {
+  const parts: string[] = [];
+  if (err instanceof Error) parts.push(err.message);
+  const cause =
+    err && typeof err === "object" && "cause" in err
+      ? (err as { cause?: unknown }).cause
+      : undefined;
+  if (cause instanceof Error) parts.push(cause.message);
+  const text = parts.join(" ");
+  if (text.includes("column") || text.includes("does not exist")) {
+    return "Database schema is out of date. Run: npm run db:migrate";
   }
+  if (text.includes("row-level security")) {
+    return "Could not save your review. Permission denied.";
+  }
+  return "Could not save your review. Please try again.";
+}
 
-  const data = parsed.data;
-  const termYear = parseTermValue(data.termYear)!;
+export type ReviewActionState = { error: string | null };
 
+function reviewError(msg: string): ReviewActionState {
+  return { error: msg };
+}
+
+function revalidateReviewPaths(courseCode: string, username: string) {
+  revalidatePath("/");
+  revalidatePath(`/courses/${encodeURIComponent(courseCode)}`);
+  revalidatePath(`/courses/${encodeURIComponent(courseCode)}/review`);
+  revalidatePath(`/u/${username}`);
+}
+
+async function loadCourse(courseCode: string) {
   const [course] = await db
-    .select({ id: courses.id })
+    .select({ id: courses.id, code: courses.code })
     .from(courses)
-    .where(eq(courses.code, data.courseCode.toUpperCase()))
+    .where(eq(courses.code, courseCode.toUpperCase()))
     .limit(1);
+  return course ?? null;
+}
+
+function getIncomingFiles(formData: FormData) {
+  return formData.getAll("files").filter((f): f is File => f instanceof File && f.size > 0);
+}
+
+function getFileDescriptions(formData: FormData) {
+  return formData.getAll("fileDescriptions").map(String);
+}
+
+function getRemoveFileIds(formData: FormData) {
+  return formData
+    .getAll("removeFileIds")
+    .map((v) => String(v))
+    .filter(Boolean);
+}
+
+export async function submitReview(
+  _prevState: ReviewActionState,
+  formData: FormData,
+): Promise<ReviewActionState> {
+  const courseCode = String(formData.get("courseCode") ?? "");
+  const profile = await requireCompleteProfile(
+    courseCode ? `/courses/${encodeURIComponent(courseCode)}/review` : undefined,
+  );
+
+  const { error, data } = parseReviewFormData(formData);
+  if (error || !data) return reviewError(error ?? "Invalid input");
+
+  const course = await loadCourse(data.courseCode);
   if (!course) redirect("/courses");
 
   const professorName = data.professor.trim();
   const reviewId = crypto.randomUUID();
-
-  const reviewError = (msg: string) =>
-    redirect(
-      `/courses/${encodeURIComponent(data.courseCode)}/review?error=${encodeURIComponent(msg)}`,
-    );
-
   const supabase = await createClient();
-  // Track every uploaded object so we can roll back Storage if the DB write fails.
-  const uploaded: { bucket: string; path: string }[] = [];
+  const uploaded: StoredObject[] = [];
 
-  // Optional syllabus PDF.
-  let syllabusPath: string | null = null;
-  let syllabusUrl: string | null = null;
-  const syllabus = formData.get("syllabus");
-  if (syllabus instanceof File && syllabus.size > 0) {
-    if (syllabus.type !== "application/pdf") {
-      reviewError("Syllabus must be a PDF.");
-    }
-    if (syllabus.size > MAX_FILE_BYTES) {
-      reviewError("Syllabus must be 5MB or smaller.");
-    }
-    const path = `${course.id}/${crypto.randomUUID()}.pdf`;
-    const { error: uploadError } = await supabase.storage
-      .from(SYLLABUS_BUCKET)
-      .upload(path, syllabus, { contentType: "application/pdf", upsert: false });
-    if (uploadError) {
-      console.error("syllabus upload failed:", uploadError);
-      reviewError("Could not upload the syllabus. Please try again.");
-    }
-    uploaded.push({ bucket: SYLLABUS_BUCKET, path });
-    syllabusPath = path;
-    syllabusUrl = supabase.storage.from(SYLLABUS_BUCKET).getPublicUrl(path).data.publicUrl;
+  const syllabusResult = await processNewSyllabus(supabase, formData, course.id, uploaded);
+  if ("error" in syllabusResult) {
+    await removeStorageObjects(supabase, uploaded);
+    return reviewError(syllabusResult.error);
   }
 
-  // Optional additional files (notes, past exams, etc.).
-  const cleanup = async () => {
-    for (const { bucket, path } of uploaded) {
-      await supabase.storage.from(bucket).remove([path]);
-    }
-  };
-  const incomingFiles = formData
-    .getAll("files")
-    .filter((f): f is File => f instanceof File && f.size > 0);
+  const { syllabusPath, syllabusUrl } = resolveSyllabusUrls(
+    supabase,
+    syllabusResult.syllabusPath,
+    data.syllabusLink,
+  );
+
+  const incomingFiles = getIncomingFiles(formData);
   if (incomingFiles.length > MAX_FILE_COUNT) {
-    reviewError(`You can attach at most ${MAX_FILE_COUNT} files.`);
-  }
-  const fileRows: { storagePath: string; url: string; originalName: string; contentType: string; sizeBytes: number }[] = [];
-  for (const f of incomingFiles) {
-    const ext = EXT_BY_TYPE[f.type];
-    if (!ext) {
-      await cleanup();
-      reviewError(`"${f.name}" is an unsupported file type.`);
-    }
-    if (f.size > MAX_FILE_BYTES) {
-      await cleanup();
-      reviewError(`"${f.name}" is larger than 5MB.`);
-    }
-    const path = `${reviewId}/${crypto.randomUUID()}.${ext}`;
-    const { error: uploadError } = await supabase.storage
-      .from(FILES_BUCKET)
-      .upload(path, f, { contentType: f.type, upsert: false });
-    if (uploadError) {
-      console.error("review file upload failed:", uploadError);
-      await cleanup();
-      reviewError("Could not upload one of your files. Please try again.");
-    }
-    uploaded.push({ bucket: FILES_BUCKET, path });
-    fileRows.push({
-      storagePath: path,
-      url: supabase.storage.from(FILES_BUCKET).getPublicUrl(path).data.publicUrl,
-      originalName: f.name,
-      contentType: f.type,
-      sizeBytes: f.size,
-    });
+    await removeStorageObjects(supabase, uploaded);
+    return reviewError(`You can attach at most ${MAX_FILE_COUNT} files.`);
   }
 
+  const fileDescriptions = getFileDescriptions(formData);
+  if (incomingFiles.some((_, i) => !fileDescriptions[i]?.trim())) {
+    await removeStorageObjects(supabase, uploaded);
+    return reviewError("Please give every additional file a name.");
+  }
+
+  const filesResult = await uploadReviewFiles(supabase, reviewId, incomingFiles, fileDescriptions);
+  if ("error" in filesResult) {
+    await removeStorageObjects(supabase, uploaded);
+    return reviewError(filesResult.error);
+  }
+  uploaded.push(...filesResult.uploaded);
+
+  let reviewInserted = false;
   try {
-    await db.transaction(async (tx) => {
-      const [existing] = await tx
-        .select({ id: professors.id })
-        .from(professors)
-        .where(eq(professors.name, professorName))
-        .limit(1);
-
-      let professorId = existing?.id ?? null;
-      if (!professorId) {
-        const [created] = await tx
-          .insert(professors)
-          .values({ name: professorName })
-          .returning({ id: professors.id });
-        professorId = created.id;
-      }
-
-      await tx.insert(reviews).values({
-        id: reviewId,
-        userId: profile.id,
-        courseId: course.id,
-        professorId,
-        term: termYear.term,
-        year: termYear.year,
-        grade: data.grade,
-        overallRating: data.overallRating,
-        difficulty: data.difficulty,
-        enjoyability: data.enjoyability,
-        usefulness: data.usefulness,
-        medium: data.medium,
-        assessmentType: data.assessmentType,
-        workloadHours: data.workloadHours ?? null,
-        wouldRecommend: data.wouldRecommend ?? null,
-        groupwork: data.groupwork === "yes",
-        body: data.body,
-        syllabusPath,
-        syllabusUrl,
-      });
-
-      if (fileRows.length > 0) {
-        await tx.insert(reviewFiles).values(fileRows.map((r) => ({ reviewId, ...r })));
-      }
+    const professorId = await resolveProfessorId(professorName);
+    await db.insert(reviews).values({
+      id: reviewId,
+      userId: profile.id,
+      courseId: course.id,
+      professorId,
+      ...reviewFieldsFromForm(data),
+      syllabusPath,
+      syllabusUrl,
     });
+    reviewInserted = true;
+
+    if (filesResult.rows.length > 0) {
+      await db.insert(reviewFiles).values(filesResult.rows.map((r) => ({ reviewId, ...r })));
+    }
   } catch (err) {
     console.error("submitReview failed:", err);
-    // Don't leave uploaded objects orphaned if the review insert failed.
-    await cleanup();
-    const message =
-      err instanceof Error && err.message.includes("column")
-        ? "Database schema is out of date. Run: npm run db:migrate"
-        : "Could not save your review. Please try again.";
-    redirect(
-      `/courses/${encodeURIComponent(data.courseCode)}/review?error=${encodeURIComponent(message)}`,
-    );
+    await removeStorageObjects(supabase, uploaded);
+    if (reviewInserted) {
+      await db.delete(reviews).where(eq(reviews.id, reviewId));
+    }
+    return reviewError(reviewSaveErrorMessage(err));
   }
 
-  revalidatePath(`/courses/${encodeURIComponent(data.courseCode)}`);
-  revalidatePath(`/u/${profile.username}`);
+  revalidateReviewPaths(data.courseCode, profile.username);
   redirect(`/courses/${encodeURIComponent(data.courseCode)}`);
+}
+
+export async function updateReview(
+  _prevState: ReviewActionState,
+  formData: FormData,
+): Promise<ReviewActionState> {
+  const reviewId = String(formData.get("reviewId") ?? "");
+  const courseCode = String(formData.get("courseCode") ?? "");
+  const editPath = courseCode
+    ? `/courses/${encodeURIComponent(courseCode)}/review/${reviewId}/edit`
+    : undefined;
+  const profile = await requireCompleteProfile(editPath);
+
+  if (!reviewId) return reviewError("Review not found.");
+
+  const ownReview = await requireOwnReview(reviewId, profile.id);
+
+  const { error, data } = parseReviewFormData(formData);
+  if (error || !data) return reviewError(error ?? "Invalid input");
+
+  if (data.courseCode.toUpperCase() !== ownReview.courseCode.toUpperCase()) {
+    return reviewError("Review does not match this course.");
+  }
+
+  const course = await loadCourse(data.courseCode);
+  if (!course) redirect("/courses");
+
+  const supabase = await createClient();
+  const uploaded: StoredObject[] = [];
+  const removeFileIds = getRemoveFileIds(formData);
+  const removeSyllabusPdf = formData.get("removeSyllabusPdf") === "1";
+
+  const existingFiles = await db
+    .select({ id: reviewFiles.id, storagePath: reviewFiles.storagePath })
+    .from(reviewFiles)
+    .where(eq(reviewFiles.reviewId, reviewId));
+
+  const keptFileCount = existingFiles.filter((f) => !removeFileIds.includes(f.id)).length;
+  const incomingFiles = getIncomingFiles(formData);
+  if (keptFileCount + incomingFiles.length > MAX_FILE_COUNT) {
+    return reviewError(`You can attach at most ${MAX_FILE_COUNT} files.`);
+  }
+
+  const fileDescriptions = getFileDescriptions(formData);
+  if (incomingFiles.some((_, i) => !fileDescriptions[i]?.trim())) {
+    return reviewError("Please give every additional file a name.");
+  }
+
+  let syllabusPath = ownReview.syllabusPath;
+  const storageToDelete: StoredObject[] = [];
+
+  if (removeSyllabusPdf && syllabusPath) {
+    storageToDelete.push({ bucket: SYLLABUS_BUCKET, path: syllabusPath });
+    syllabusPath = null;
+  }
+
+  const syllabusResult = await processNewSyllabus(supabase, formData, course.id, uploaded);
+  if ("error" in syllabusResult) {
+    await removeStorageObjects(supabase, uploaded);
+    return reviewError(syllabusResult.error);
+  }
+  if (syllabusResult.syllabusPath) {
+    if (ownReview.syllabusPath && ownReview.syllabusPath !== syllabusResult.syllabusPath) {
+      storageToDelete.push({ bucket: SYLLABUS_BUCKET, path: ownReview.syllabusPath });
+    }
+    syllabusPath = syllabusResult.syllabusPath;
+  }
+
+  const { syllabusUrl } = resolveSyllabusUrls(supabase, syllabusPath, data.syllabusLink);
+
+  const filesResult = await uploadReviewFiles(supabase, reviewId, incomingFiles, fileDescriptions);
+  if ("error" in filesResult) {
+    await removeStorageObjects(supabase, uploaded);
+    return reviewError(filesResult.error);
+  }
+  uploaded.push(...filesResult.uploaded);
+
+  const filesToDelete = existingFiles.filter((f) => removeFileIds.includes(f.id));
+
+  try {
+    const professorId = await resolveProfessorId(data.professor.trim());
+
+    await db
+      .update(reviews)
+      .set({
+        professorId,
+        ...reviewFieldsFromForm(data),
+        syllabusPath,
+        syllabusUrl,
+      })
+      .where(and(eq(reviews.id, reviewId), eq(reviews.userId, profile.id)));
+
+    if (filesToDelete.length > 0) {
+      await db.delete(reviewFiles).where(
+        inArray(
+          reviewFiles.id,
+          filesToDelete.map((f) => f.id),
+        ),
+      );
+      for (const f of filesToDelete) {
+        storageToDelete.push({ bucket: FILES_BUCKET, path: f.storagePath });
+      }
+    }
+
+    if (filesResult.rows.length > 0) {
+      await db.insert(reviewFiles).values(filesResult.rows.map((r) => ({ reviewId, ...r })));
+    }
+
+    await removeStorageObjects(supabase, storageToDelete);
+  } catch (err) {
+    console.error("updateReview failed:", err);
+    await removeStorageObjects(supabase, uploaded);
+    return reviewError(reviewSaveErrorMessage(err));
+  }
+
+  revalidateReviewPaths(data.courseCode, profile.username);
+  redirect(`/courses/${encodeURIComponent(data.courseCode)}`);
+}
+
+export async function deleteReview(formData: FormData) {
+  const reviewId = String(formData.get("reviewId") ?? "");
+  const courseCode = String(formData.get("courseCode") ?? "");
+  const profile = await requireCompleteProfile();
+
+  if (!reviewId) redirect("/courses");
+
+  const ownReview = await requireOwnReview(reviewId, profile.id);
+  const redirectCode = courseCode || ownReview.courseCode;
+
+  const supabase = await createClient();
+  const storageObjects = await getReviewStoragePaths(reviewId, ownReview.syllabusPath);
+
+  await db.delete(reviews).where(and(eq(reviews.id, reviewId), eq(reviews.userId, profile.id)));
+  await removeStorageObjects(supabase, storageObjects);
+
+  revalidateReviewPaths(redirectCode, profile.username);
+  redirect(`/courses/${encodeURIComponent(redirectCode)}`);
+}
+
+async function processNewSyllabus(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  formData: FormData,
+  courseId: string,
+  uploaded: StoredObject[],
+): Promise<{ syllabusPath: string | null } | { error: string }> {
+  const syllabus = formData.get("syllabus");
+  const hasSyllabusFile = syllabus instanceof File && syllabus.size > 0;
+  if (!hasSyllabusFile) {
+    return { syllabusPath: null };
+  }
+
+  const result = await uploadSyllabusPdf(supabase, courseId, syllabus);
+  if ("error" in result) {
+    return { error: result.error };
+  }
+  uploaded.push(result.uploaded);
+  return { syllabusPath: result.path };
 }
