@@ -1,3 +1,5 @@
+import { cache } from "react";
+import type { Metadata } from "next";
 import Link from "next/link";
 import { buttonVariants } from "@/components/ui/button";
 import { LiveBackground } from "@/components/live-background";
@@ -25,12 +27,59 @@ import {
 
 type Params = Promise<{ code: string }>;
 
+// Shared by generateMetadata and the page so we only hit the DB once per request.
+const getCourse = cache(async (courseCode: string) => {
+  const [course] = await db.select().from(courses).where(eq(courses.code, courseCode)).limit(1);
+  return course ?? null;
+});
+
+const getReviewCount = cache(async (courseId: string) => {
+  const [row] = await db
+    .select({ count: sql<number>`count(*)::int` })
+    .from(reviews)
+    .where(eq(reviews.courseId, courseId));
+  return row?.count ?? 0;
+});
+
+export async function generateMetadata({ params }: { params: Params }): Promise<Metadata> {
+  const { code } = await params;
+  const courseCode = decodeURIComponent(code).toUpperCase();
+  const course = await getCourse(courseCode);
+
+  if (!course) {
+    return { title: `${courseCode} — not found`, robots: { index: false, follow: true } };
+  }
+
+  const title = `${course.code} Reviews — ${course.title}`;
+  const base = `Honest student reviews of ${course.code} (${course.title}) at UBC: difficulty, workload, would-take-again, professors, and syllabi.`;
+  const description = (course.description ? `${base} ${course.description}` : base).slice(0, 300);
+  const path = `/courses/${encodeURIComponent(course.code)}`;
+
+  // Don't index courses with no reviews yet — they're thin/duplicate content.
+  // They become indexable automatically once the first review lands.
+  const reviewCount = await getReviewCount(course.id);
+
+  return {
+    title,
+    description,
+    alternates: { canonical: path },
+    openGraph: {
+      type: "article",
+      title: `${title} · UBC-Courses`,
+      description,
+      url: path,
+    },
+    twitter: { card: "summary", title, description },
+    robots: reviewCount > 0 ? { index: true, follow: true } : { index: false, follow: true },
+  };
+}
+
 export default async function CoursePage({ params }: { params: Params }) {
   const { code } = await params;
   const courseCode = decodeURIComponent(code).toUpperCase();
   const currentUser = await getCurrentUser();
 
-  const [course] = await db.select().from(courses).where(eq(courses.code, courseCode)).limit(1);
+  const course = await getCourse(courseCode);
   if (!course) {
     return (
       <>
