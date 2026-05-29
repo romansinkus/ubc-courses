@@ -3,5 +3,6 @@
   * Implement the visuals tab
   * Implement the document search tab
 
-* Scrape for more ubc courses
-* Don't allow users to add their own courses
+---
+* UI of reviews on the profile page
+* Shorten the area that holds the course subjects in the filter area on the home page

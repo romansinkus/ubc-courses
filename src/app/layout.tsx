@@ -17,6 +17,10 @@ export const metadata: Metadata = {
   title: "UBC-Courses — Reviews of UBC courses",
   applicationName: "UBC-Courses",
   description: "Find honest student reviews of UBC courses, by course code.",
+  icons: {
+    icon: [{ url: "/ubc-courses-icon-2.png", type: "image/png" }],
+    apple: [{ url: "/ubc-courses-icon-2.png", type: "image/png" }],
+  },
 };
 
 export default function RootLayout({
