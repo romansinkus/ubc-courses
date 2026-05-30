@@ -215,20 +215,18 @@ export default async function CoursePage({ params }: { params: Params }) {
 
   const syllabusLinkDocs: CourseDocument[] = reviewCards
     .filter((r) => r.syllabusLink)
-    .map((r) => ({ url: r.syllabusLink!, name: "Syllabus link", by: r.username, kind: "link" }));
+    .map((r) => ({ url: r.syllabusLink!, name: "Syllabus link", kind: "link" }));
   const syllabusPdfDocs: CourseDocument[] = reviewCards
     .filter((r) => r.syllabusPdfUrl)
     .map((r) => ({
       url: r.syllabusPdfUrl!,
       name: formatTermLabel(`${r.year}-${r.term}`),
-      by: r.username,
       kind: "syllabus",
     }));
   const otherDocs: CourseDocument[] = reviewCards.flatMap((r) =>
     r.files.map((f) => ({
       url: f.url,
       name: f.description ?? f.originalName,
-      by: r.username,
       kind: "file" as const,
     })),
   );
@@ -364,7 +362,7 @@ export default async function CoursePage({ params }: { params: Params }) {
         {reviewCards.length > 0 && (
           <section className="space-y-4">
             <h2 className={cn(glassFormSectionTitleClass, "px-1 text-base")}>Reviews</h2>
-            <CourseReviews reviews={reviewCards} courseCode={course.code} />
+            <CourseReviews reviews={reviewCards} courseCode={course.code} showAuthor={false} />
           </section>
         )}
       </div>

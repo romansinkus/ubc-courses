@@ -31,8 +31,6 @@ export function CoursesFilters({
   const { pushParams: browsePushParams } = useCoursesBrowseNav(basePath);
   const [subjectQuery, setSubjectQuery] = useState("");
   const termOptions = useMemo(() => generateTermOptions(), []);
-  const hasReviews =
-    searchParams.get("reviewed") === "1" || searchParams.get("reviewed") === "true";
 
   function pushParams(updates: Record<string, string | null>) {
     if (basePath === "/courses") {
@@ -75,8 +73,7 @@ export function CoursesFilters({
   const activeCount =
     selectedSubjects.length +
     selectedLevels.length +
-    (term !== "all" ? 1 : 0) +
-    (hasReviews ? 1 : 0);
+    (term !== "all" ? 1 : 0);
 
   const filteredSubjects = useMemo(() => {
     const q = subjectQuery.trim().toUpperCase();

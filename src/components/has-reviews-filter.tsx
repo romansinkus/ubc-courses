@@ -5,14 +5,14 @@ import { useSearchParams } from "next/navigation";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useCoursesBrowseNav } from "@/components/courses-browse-nav";
 import { glassFilterCheckboxClass } from "@/lib/glass-styles";
+import { parseHasReviewsParam } from "@/lib/course-filters";
 
 export function HasReviewsFilter({ checked }: { checked?: boolean }) {
   const searchParams = useSearchParams();
   const { pushParams } = useCoursesBrowseNav();
   const [optimisticChecked, setOptimisticChecked] = useState<boolean | null>(null);
 
-  const fromUrl =
-    searchParams.get("reviewed") === "1" || searchParams.get("reviewed") === "true";
+  const fromUrl = parseHasReviewsParam(searchParams.get("reviewed"));
   const resolvedChecked = checked ?? fromUrl;
   const displayedChecked = optimisticChecked ?? resolvedChecked;
 
@@ -22,7 +22,7 @@ export function HasReviewsFilter({ checked }: { checked?: boolean }) {
 
   function toggle(nextChecked: boolean) {
     setOptimisticChecked(nextChecked);
-    pushParams({ reviewed: nextChecked ? "1" : null });
+    pushParams({ reviewed: nextChecked ? null : "0" });
   }
 
   return (

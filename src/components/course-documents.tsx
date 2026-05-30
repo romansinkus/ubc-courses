@@ -7,8 +7,6 @@ export type CourseDocument = {
   url: string;
   /** Display name for the row. */
   name: string;
-  /** Username of the reviewer who contributed it. */
-  by: string;
   /** External links open in a new tab; stored files download. */
   kind: "link" | "syllabus" | "file";
 };
@@ -32,7 +30,6 @@ function DocumentRow({ doc }: { doc: CourseDocument }) {
       >
         <Icon className="h-4 w-4 shrink-0 text-muted-foreground" />
         <span className="min-w-0 flex-1 truncate font-medium">{doc.name}</span>
-        <span className="shrink-0 text-xs text-muted-foreground">@{doc.by}</span>
         {isLink ? (
           <ExternalLink className="h-4 w-4 shrink-0 text-muted-foreground" />
         ) : (
