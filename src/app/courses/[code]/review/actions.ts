@@ -7,6 +7,7 @@ import { db } from "@/db";
 import { courses, reviewFiles, reviews } from "@/db/schema";
 import { requireCompleteProfile } from "@/lib/auth";
 import {
+  extractReviewFormValues,
   parseReviewFormData,
   reviewFieldsFromForm,
 } from "@/lib/review-form-schema";
@@ -41,10 +42,18 @@ function reviewSaveErrorMessage(err: unknown): string {
   return "Could not save your review. Please try again.";
 }
 
-export type ReviewActionState = { error: string | null };
+export type ReviewActionState = {
+  error: string | null;
+  values: ReturnType<typeof extractReviewFormValues> | null;
+  resetKey: number;
+};
 
-function reviewError(msg: string): ReviewActionState {
-  return { error: msg };
+function reviewError(msg: string, formData: FormData): ReviewActionState {
+  return {
+    error: msg,
+    values: extractReviewFormValues(formData),
+    resetKey: Date.now(),
+  };
 }
 
 function revalidateReviewPaths(courseCode: string, username: string) {
@@ -88,7 +97,7 @@ export async function submitReview(
   );
 
   const { error, data } = parseReviewFormData(formData);
-  if (error || !data) return reviewError(error ?? "Invalid input");
+  if (error || !data) return reviewError(error ?? "Invalid input", formData);
 
   const course = await loadCourse(data.courseCode);
   if (!course) redirect("/courses");
@@ -101,7 +110,7 @@ export async function submitReview(
   const syllabusResult = await processNewSyllabus(supabase, formData, course.id, uploaded);
   if ("error" in syllabusResult) {
     await removeStorageObjects(supabase, uploaded);
-    return reviewError(syllabusResult.error);
+    return reviewError(syllabusResult.error, formData);
   }
 
   const { syllabusPath, syllabusUrl } = resolveSyllabusUrls(
@@ -113,19 +122,19 @@ export async function submitReview(
   const incomingFiles = getIncomingFiles(formData);
   if (incomingFiles.length > MAX_FILE_COUNT) {
     await removeStorageObjects(supabase, uploaded);
-    return reviewError(`You can attach at most ${MAX_FILE_COUNT} files.`);
+    return reviewError(`You can attach at most ${MAX_FILE_COUNT} files.`, formData);
   }
 
   const fileDescriptions = getFileDescriptions(formData);
   if (incomingFiles.some((_, i) => !fileDescriptions[i]?.trim())) {
     await removeStorageObjects(supabase, uploaded);
-    return reviewError("Please give every additional file a name.");
+    return reviewError("Please give every additional file a name.", formData);
   }
 
   const filesResult = await uploadReviewFiles(supabase, reviewId, incomingFiles, fileDescriptions);
   if ("error" in filesResult) {
     await removeStorageObjects(supabase, uploaded);
-    return reviewError(filesResult.error);
+    return reviewError(filesResult.error, formData);
   }
   uploaded.push(...filesResult.uploaded);
 
@@ -152,7 +161,7 @@ export async function submitReview(
     if (reviewInserted) {
       await db.delete(reviews).where(eq(reviews.id, reviewId));
     }
-    return reviewError(reviewSaveErrorMessage(err));
+    return reviewError(reviewSaveErrorMessage(err), formData);
   }
 
   revalidateReviewPaths(data.courseCode, profile.username);
@@ -170,15 +179,15 @@ export async function updateReview(
     : undefined;
   const profile = await requireCompleteProfile(editPath);
 
-  if (!reviewId) return reviewError("Review not found.");
+  if (!reviewId) return reviewError("Review not found.", formData);
 
   const ownReview = await requireOwnReview(reviewId, profile.id);
 
   const { error, data } = parseReviewFormData(formData);
-  if (error || !data) return reviewError(error ?? "Invalid input");
+  if (error || !data) return reviewError(error ?? "Invalid input", formData);
 
   if (data.courseCode.toUpperCase() !== ownReview.courseCode.toUpperCase()) {
-    return reviewError("Review does not match this course.");
+    return reviewError("Review does not match this course.", formData);
   }
 
   const course = await loadCourse(data.courseCode);
@@ -197,12 +206,12 @@ export async function updateReview(
   const keptFileCount = existingFiles.filter((f) => !removeFileIds.includes(f.id)).length;
   const incomingFiles = getIncomingFiles(formData);
   if (keptFileCount + incomingFiles.length > MAX_FILE_COUNT) {
-    return reviewError(`You can attach at most ${MAX_FILE_COUNT} files.`);
+    return reviewError(`You can attach at most ${MAX_FILE_COUNT} files.`, formData);
   }
 
   const fileDescriptions = getFileDescriptions(formData);
   if (incomingFiles.some((_, i) => !fileDescriptions[i]?.trim())) {
-    return reviewError("Please give every additional file a name.");
+    return reviewError("Please give every additional file a name.", formData);
   }
 
   let syllabusPath = ownReview.syllabusPath;
@@ -216,7 +225,7 @@ export async function updateReview(
   const syllabusResult = await processNewSyllabus(supabase, formData, course.id, uploaded);
   if ("error" in syllabusResult) {
     await removeStorageObjects(supabase, uploaded);
-    return reviewError(syllabusResult.error);
+    return reviewError(syllabusResult.error, formData);
   }
   if (syllabusResult.syllabusPath) {
     if (ownReview.syllabusPath && ownReview.syllabusPath !== syllabusResult.syllabusPath) {
@@ -230,7 +239,7 @@ export async function updateReview(
   const filesResult = await uploadReviewFiles(supabase, reviewId, incomingFiles, fileDescriptions);
   if ("error" in filesResult) {
     await removeStorageObjects(supabase, uploaded);
-    return reviewError(filesResult.error);
+    return reviewError(filesResult.error, formData);
   }
   uploaded.push(...filesResult.uploaded);
 
@@ -269,7 +278,7 @@ export async function updateReview(
   } catch (err) {
     console.error("updateReview failed:", err);
     await removeStorageObjects(supabase, uploaded);
-    return reviewError(reviewSaveErrorMessage(err));
+    return reviewError(reviewSaveErrorMessage(err), formData);
   }
 
   revalidateReviewPaths(data.courseCode, profile.username);

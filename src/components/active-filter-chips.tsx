@@ -1,9 +1,9 @@
 "use client";
 
-import { useRouter, useSearchParams } from "next/navigation";
 import { X } from "lucide-react";
 import { LEVEL_LABEL } from "@/lib/course-filters";
 import { formatTermLabel } from "@/lib/terms";
+import { useCoursesBrowseNav } from "@/components/courses-browse-nav";
 
 export function ActiveFilterChips({
   selectedSubjects,
@@ -16,22 +16,10 @@ export function ActiveFilterChips({
   term: string;
   query?: string;
 }) {
-  const router = useRouter();
-  const searchParams = useSearchParams();
+  const { pushParams } = useCoursesBrowseNav();
 
   if (selectedSubjects.length === 0 && selectedLevels.length === 0 && term === "all" && !query) {
     return null;
-  }
-
-  function pushParams(updates: Record<string, string | null>) {
-    const params = new URLSearchParams(searchParams.toString());
-    params.delete("page");
-    for (const [key, value] of Object.entries(updates)) {
-      if (!value) params.delete(key);
-      else params.set(key, value);
-    }
-    const qs = params.toString();
-    router.push(`/courses${qs ? `?${qs}` : ""}`);
   }
 
   function removeSubject(s: string) {

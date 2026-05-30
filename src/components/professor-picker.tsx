@@ -15,7 +15,7 @@ import {
 } from "@/components/ui/dialog";
 import { formatProfessorName } from "@/lib/professor-name";
 import { cn } from "@/lib/utils";
-import { glassFieldClass, glassSurfaceClass } from "@/lib/glass-styles";
+import { glassFieldClass, glassFileRowClass } from "@/lib/glass-styles";
 
 export function ProfessorPicker({
   variant = "default",
@@ -95,7 +95,8 @@ export function ProfessorPicker({
   }, []);
 
   const showDropdown = !selectedProfessor && open && isSearching;
-  const noMatches = isSearching && !loading && debouncedQuery === fetchedFor && suggestions.length === 0;
+  const searchSettled = isSearching && !loading && debouncedQuery === fetchedFor;
+  const noMatches = searchSettled && suggestions.length === 0;
 
   function pick(prof: string) {
     setSelectedProfessor(prof);
@@ -111,8 +112,14 @@ export function ProfessorPicker({
 
   function openAddDialog() {
     setAddError(null);
-    setFirstName("");
-    setLastName("");
+    const parts = trimmedQuery.split(/\s+/);
+    if (parts.length >= 2) {
+      setFirstName(parts[0] ?? "");
+      setLastName(parts.slice(1).join(" "));
+    } else {
+      setFirstName(trimmedQuery);
+      setLastName("");
+    }
     setAddOpen(true);
     setOpen(false);
   }
@@ -132,20 +139,39 @@ export function ProfessorPicker({
     setAddError(null);
   }
 
+  const dropdownPanelClass = cn(
+    "absolute left-0 right-0 z-50 mt-1 overflow-hidden rounded-xl border border-border bg-popover text-popover-foreground shadow-lg",
+    isGlass && "border-ubc-blue-300/60 ring-1 ring-white/60 dark:border-white/30 dark:ring-white/10",
+  );
+
+  const dropdownItemClass = (active: boolean) =>
+    cn(
+      "flex w-full items-center px-3 py-2 text-left text-sm transition-colors",
+      active
+        ? "bg-accent text-accent-foreground"
+        : "hover:bg-accent hover:text-accent-foreground",
+    );
+
   function onKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
+    if (!open) return;
+    if (e.key === "Enter" && noMatches) {
+      e.preventDefault();
+      openAddDialog();
+      return;
+    }
     if (!showDropdown) return;
-    const total = suggestions.length + 1;
+    const total = suggestions.length;
     if (e.key === "ArrowDown") {
       e.preventDefault();
-      setHighlight((h) => (h + 1) % total);
+      setHighlight((h) => (total === 0 ? -1 : (h + 1) % total));
     } else if (e.key === "ArrowUp") {
       e.preventDefault();
-      setHighlight((h) => (h <= 0 ? total - 1 : h - 1));
+      setHighlight((h) => (total === 0 ? -1 : h <= 0 ? total - 1 : h - 1));
     } else if (e.key === "Enter") {
       e.preventDefault();
       if (highlight >= 0 && highlight < suggestions.length) {
         pick(suggestions[highlight]);
-      } else {
+      } else if (noMatches) {
         openAddDialog();
       }
     } else if (e.key === "Escape") {
@@ -157,94 +183,90 @@ export function ProfessorPicker({
     <>
       <input type="hidden" name="professor" value={selectedProfessor ?? ""} required />
 
-      <div ref={containerRef} className="relative">
+      <div ref={containerRef} className={cn("relative", open && !selectedProfessor && "z-50")}>
         {selectedProfessor ? (
-          <div
-            className={cn(
-              "flex h-8 items-center gap-2 rounded-lg border px-2.5",
-              isGlass ? glassFieldClass : "border-input",
-            )}
-          >
-            <span id="professor" className="min-w-0 flex-1 truncate text-sm">
-              {selectedProfessor}
-            </span>
-            <button
-              type="button"
-              onClick={clearSelection}
-              className="shrink-0 text-xs text-muted-foreground hover:text-foreground"
+            <div
+              className={cn(
+                "flex h-8 items-center gap-2 rounded-lg border px-2.5",
+                isGlass ? glassFieldClass : "border-input",
+              )}
             >
-              Change
-            </button>
-          </div>
-        ) : (
-          <>
-            <Input
-              id="professor"
-              type="text"
-              value={query}
-              onChange={(e) => {
-                const value = e.target.value;
-                setQuery(value);
-                setOpen(true);
-                if (!value.trim()) {
-                  setSuggestions([]);
-                  setHighlight(-1);
-                  setFetchedFor("");
-                }
-              }}
-              onFocus={() => setOpen(true)}
-              onKeyDown={onKeyDown}
-              placeholder="Search professors"
-              autoComplete="off"
-              required
-              className={isGlass ? glassFieldClass : undefined}
-            />
-            {showDropdown && (
-              <div
-                className={cn(
-                  "absolute left-0 right-0 z-50 mt-1 overflow-hidden rounded-xl border shadow-lg",
-                  isGlass ? cn(glassSurfaceClass, "bg-background/80") : "border bg-popover",
-                )}
+              <span id="professor" className="min-w-0 flex-1 truncate text-sm">
+                {selectedProfessor}
+              </span>
+              <button
+                type="button"
+                onClick={clearSelection}
+                className="shrink-0 text-xs text-muted-foreground hover:text-foreground"
               >
-                <ul className="max-h-72 overflow-y-auto py-1 text-left text-sm">
+                Change
+              </button>
+            </div>
+          ) : (
+            <>
+              <Input
+                id="professor"
+                type="text"
+                value={query}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  setQuery(value);
+                  setOpen(true);
+                  if (!value.trim()) {
+                    setSuggestions([]);
+                    setHighlight(-1);
+                    setFetchedFor("");
+                  }
+                }}
+                onFocus={() => setOpen(true)}
+                onKeyDown={onKeyDown}
+                placeholder="Search or add a professor"
+                autoComplete="off"
+                className={isGlass ? glassFieldClass : undefined}
+              />
+              {showDropdown && (
+                <div className={dropdownPanelClass}>
                   {loading && suggestions.length === 0 ? (
-                    <li className="px-3 py-2 text-muted-foreground">Searching…</li>
+                    <p className="px-3 py-2 text-sm text-muted-foreground">Searching…</p>
                   ) : noMatches ? (
-                    <li className="px-3 py-2 text-muted-foreground">No matches.</li>
+                    <div className="space-y-2 p-2">
+                      <p className="px-1 text-xs leading-snug text-muted-foreground">
+                        No matches for &ldquo;{trimmedQuery}&rdquo;
+                      </p>
+                      <button
+                        type="button"
+                        onClick={openAddDialog}
+                        className={cn(
+                          "flex w-full items-center gap-2 text-sm font-medium transition-colors hover:bg-muted/50",
+                          isGlass
+                            ? glassFileRowClass
+                            : "rounded-lg border border-input bg-muted/30 px-3 py-2",
+                        )}
+                      >
+                        <Plus className="h-4 w-4 shrink-0 text-primary" />
+                        Add professor
+                      </button>
+                    </div>
                   ) : (
-                    suggestions.map((p, i) => (
-                      <li key={p}>
-                        <button
-                          type="button"
-                          onMouseEnter={() => setHighlight(i)}
-                          onClick={() => pick(p)}
-                          className={`flex w-full items-center px-3 py-2 ${
-                            i === highlight ? "bg-accent text-accent-foreground" : ""
-                          }`}
-                        >
-                          {p}
-                        </button>
-                      </li>
-                    ))
+                    <ul className="max-h-72 overflow-y-auto py-1">
+                      {suggestions.map((p, i) => (
+                        <li key={p}>
+                          <button
+                            type="button"
+                            onMouseEnter={() => setHighlight(i)}
+                            onClick={() => pick(p)}
+                            className={dropdownItemClass(i === highlight)}
+                          >
+                            {p}
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
                   )}
-                  <li className={suggestions.length > 0 ? "mt-1 border-t pt-1" : ""}>
-                    <button
-                      type="button"
-                      onMouseEnter={() => setHighlight(suggestions.length)}
-                      onClick={openAddDialog}
-                      className={`flex w-full items-center gap-2 px-3 py-2 ${
-                        highlight === suggestions.length ? "bg-accent text-accent-foreground" : ""
-                      }`}
-                    >
-                      <Plus className="h-4 w-4" />
-                      Add a professor
-                    </button>
-                  </li>
-                </ul>
-              </div>
-            )}
-          </>
-        )}
+                </div>
+              )}
+            </>
+          )}
       </div>
 
       <Dialog open={addOpen} onOpenChange={setAddOpen}>
@@ -268,7 +290,6 @@ export function ProfessorPicker({
                 }}
                 autoComplete="given-name"
                 maxLength={60}
-                required
               />
             </div>
             <div className="space-y-1.5">
@@ -282,7 +303,6 @@ export function ProfessorPicker({
                 }}
                 autoComplete="family-name"
                 maxLength={60}
-                required
               />
             </div>
             {addError ? <p className="text-sm text-red-600">{addError}</p> : null}

@@ -20,6 +20,7 @@ export type CourseFilters = {
   selectedLevels: string[];
   term: string;
   parsedTerm: ReturnType<typeof parseTermValue>;
+  hasReviews: boolean;
   page: number;
 };
 
@@ -28,6 +29,7 @@ export function parseCourseFilters(params: {
   subjects?: string;
   level?: string;
   term?: string;
+  reviewed?: string;
   page?: string;
 }): CourseFilters {
   const query = params.q?.trim();
@@ -42,13 +44,17 @@ export function parseCourseFilters(params: {
     : [];
   const parsedTerm = parseTermValue(params.term);
   const term = parsedTerm ? params.term! : "all";
+  const hasReviews = params.reviewed === "1" || params.reviewed === "true";
   const page = Math.max(1, Number.parseInt(params.page ?? "1", 10) || 1);
 
-  return { query, selectedSubjects, selectedLevels, term, parsedTerm, page };
+  return { query, selectedSubjects, selectedLevels, term, parsedTerm, hasReviews, page };
 }
 
 export function buildCourseBrowseQuery(
-  filters: Pick<CourseFilters, "query" | "selectedSubjects" | "selectedLevels" | "term">,
+  filters: Pick<
+    CourseFilters,
+    "query" | "selectedSubjects" | "selectedLevels" | "term" | "hasReviews"
+  >,
   page = 1,
 ): string {
   const params = new URLSearchParams();
@@ -56,14 +62,33 @@ export function buildCourseBrowseQuery(
   if (filters.selectedSubjects.length) params.set("subjects", filters.selectedSubjects.join(","));
   if (filters.selectedLevels.length) params.set("level", filters.selectedLevels.join(","));
   if (filters.term !== "all") params.set("term", filters.term);
+  if (filters.hasReviews) params.set("reviewed", "1");
   if (page > 1) params.set("page", String(page));
   const qs = params.toString();
   return qs ? `?${qs}` : "";
 }
 
+export function courseBrowsePath(
+  searchParams: URLSearchParams,
+  updates: Record<string, string | null>,
+  basePath = "/courses",
+): string {
+  const params = new URLSearchParams(searchParams.toString());
+  params.delete("page");
+  for (const [key, value] of Object.entries(updates)) {
+    if (!value) params.delete(key);
+    else params.set(key, value);
+  }
+  const qs = params.toString();
+  return `${basePath}${qs ? `?${qs}` : ""}`;
+}
+
 export function hasActiveCourseFilters(filters: CourseFilters): boolean {
   return (
-    !!filters.query || filters.selectedSubjects.length > 0 || filters.selectedLevels.length > 0
+    !!filters.query ||
+    filters.selectedSubjects.length > 0 ||
+    filters.selectedLevels.length > 0 ||
+    filters.hasReviews
   );
 }
 
@@ -101,6 +126,14 @@ export function buildCourseWhereClause(filters: CourseFilters): SQL | undefined 
         where ${reviews.courseId} = ${courses.id}
           and ${reviews.year} = ${filters.parsedTerm.year}
           and ${reviews.term} = ${filters.parsedTerm.term}
+      )`,
+    );
+  }
+  if (filters.hasReviews) {
+    clauses.push(
+      sql`exists (
+        select 1 from ${reviews}
+        where ${reviews.courseId} = ${courses.id}
       )`,
     );
   }

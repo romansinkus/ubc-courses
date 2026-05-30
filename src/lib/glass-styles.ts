@@ -27,6 +27,9 @@ export const glassNavIconButtonClass = `${primaryActionButtonClass} inline-flex 
 export const glassFieldClass =
   "border-ubc-blue-300/70 bg-background/90 shadow-[0_1px_3px_rgba(0,33,69,0.1),inset_0_1px_0_rgba(255,255,255,0.75)] ring-1 ring-white/80 backdrop-blur-sm placeholder:text-muted-foreground focus-visible:border-ubc-blue-400 focus-visible:bg-background focus-visible:ring-3 focus-visible:ring-ubc-blue-400/30 dark:border-white/35 dark:bg-background/60 dark:ring-white/15 dark:focus-visible:border-ubc-blue-400/70 dark:focus-visible:bg-background/75 dark:focus-visible:ring-ubc-blue-400/25";
 
+export const glassFilterCheckboxClass =
+  "border-ubc-blue-400/80 bg-background/95 shadow-[0_1px_2px_rgba(0,33,69,0.12)] ring-1 ring-ubc-blue-300/50 dark:border-white/45 dark:bg-background/70 dark:ring-white/20";
+
 export const glassFormSectionClass =
   "space-y-4 rounded-2xl border border-white/55 bg-background/50 p-5 shadow-[0_4px_24px_rgba(0,33,69,0.08),inset_0_1px_0_rgba(255,255,255,0.35)] ring-1 ring-white/55 backdrop-blur-xl supports-[backdrop-filter]:bg-background/40 dark:border-white/20 dark:bg-background/25 dark:ring-white/10";
 

@@ -8,21 +8,24 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { formatTermLabel, type TermOption } from "@/lib/terms";
+import { cn } from "@/lib/utils";
 
 export function TermFilterSelect({
   value,
   onValueChange,
   options,
+  triggerClassName,
 }: {
   value: string;
   onValueChange: (value: string | null) => void;
   options: TermOption[];
+  triggerClassName?: string;
 }) {
   const label = !value || value === "all" ? "Any term" : formatTermLabel(value);
 
   return (
     <Select value={value} onValueChange={onValueChange}>
-      <SelectTrigger className="w-full">
+      <SelectTrigger className={cn("w-full", triggerClassName)}>
         <SelectValue placeholder="Any term">{label}</SelectValue>
       </SelectTrigger>
       <SelectContent className="max-h-72">

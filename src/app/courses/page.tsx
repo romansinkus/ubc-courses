@@ -2,6 +2,7 @@ import { Suspense } from "react";
 import { SearchBox } from "@/components/search-box";
 import { LiveBackground } from "@/components/live-background";
 import { CoursesSearchBox } from "@/components/courses-search-box";
+import { CoursesBrowseNavProvider } from "@/components/courses-browse-nav";
 import {
   CoursesBrowseContent,
   CoursesBrowseSkeleton,
@@ -12,6 +13,7 @@ type SearchParams = Promise<{
   subjects?: string;
   level?: string;
   term?: string;
+  reviewed?: string;
   page?: string;
 }>;
 
@@ -32,7 +34,9 @@ export default function CoursesPage({ searchParams }: { searchParams: SearchPara
         </div>
 
         <Suspense fallback={<CoursesBrowseSkeleton />}>
-          <CoursesBrowseContent searchParams={searchParams} />
+          <CoursesBrowseNavProvider>
+            <CoursesBrowseContent searchParams={searchParams} />
+          </CoursesBrowseNavProvider>
         </Suspense>
       </div>
     </>

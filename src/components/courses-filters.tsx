@@ -7,7 +7,9 @@ import { Input } from "@/components/ui/input";
 import { generateTermOptions } from "@/lib/terms";
 import { LEVEL_LABEL } from "@/lib/course-filters";
 import { TermFilterSelect } from "@/components/term-filter-select";
+import { useCoursesBrowseNav } from "@/components/courses-browse-nav";
 import { cn } from "@/lib/utils";
+import { glassFieldClass, glassFilterCheckboxClass } from "@/lib/glass-styles";
 
 const LEVELS = ["100", "200", "300", "400", "500"] as const;
 
@@ -26,10 +28,18 @@ export function CoursesFilters({
 }) {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { pushParams: browsePushParams } = useCoursesBrowseNav(basePath);
   const [subjectQuery, setSubjectQuery] = useState("");
   const termOptions = useMemo(() => generateTermOptions(), []);
+  const hasReviews =
+    searchParams.get("reviewed") === "1" || searchParams.get("reviewed") === "true";
 
   function pushParams(updates: Record<string, string | null>) {
+    if (basePath === "/courses") {
+      browsePushParams(updates);
+      return;
+    }
+
     const params = new URLSearchParams(searchParams.toString());
     params.delete("page");
     for (const [key, value] of Object.entries(updates)) {
@@ -59,11 +69,14 @@ export function CoursesFilters({
   }
 
   function clearAll() {
-    pushParams({ subjects: null, level: null, term: null });
+    pushParams({ subjects: null, level: null, term: null, reviewed: null });
   }
 
   const activeCount =
-    selectedSubjects.length + selectedLevels.length + (term !== "all" ? 1 : 0);
+    selectedSubjects.length +
+    selectedLevels.length +
+    (term !== "all" ? 1 : 0) +
+    (hasReviews ? 1 : 0);
 
   const filteredSubjects = useMemo(() => {
     const q = subjectQuery.trim().toUpperCase();
@@ -86,19 +99,19 @@ export function CoursesFilters({
         ) : null}
       </div>
 
-      <section className="flex min-h-0 flex-1 flex-col gap-3">
-        <h3 className="shrink-0 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+      <section className="flex shrink-0 flex-col gap-3">
+        <h3 className="shrink-0 text-xs font-semibold uppercase tracking-wide text-foreground/70">
           Subject
         </h3>
-        <div className="flex min-h-0 flex-1 flex-col gap-2">
+        <div className="flex flex-col gap-2">
           <Input
             type="search"
             value={subjectQuery}
             onChange={(e) => setSubjectQuery(e.target.value)}
             placeholder="Find a subject"
-            className="h-8 shrink-0 text-sm"
+            className={cn("h-8 shrink-0 text-sm", glassFieldClass)}
           />
-          <ul className="min-h-0 flex-1 space-y-2 overflow-y-auto pr-1">
+          <ul className="max-h-52 space-y-2 overflow-y-auto pr-1">
             {filteredSubjects.length === 0 ? (
               <li className="text-xs text-muted-foreground">No subjects match.</li>
             ) : (
@@ -111,6 +124,7 @@ export function CoursesFilters({
                       id={id}
                       checked={checked}
                       onCheckedChange={(c) => toggleSubject(s, c === true)}
+                      className={glassFilterCheckboxClass}
                     />
                     <label
                       htmlFor={id}
@@ -137,6 +151,7 @@ export function CoursesFilters({
                   id={id}
                   checked={checked}
                   onCheckedChange={(c) => toggleLevel(lvl, c === true)}
+                  className={glassFilterCheckboxClass}
                 />
                 <label
                   htmlFor={id}
@@ -151,7 +166,12 @@ export function CoursesFilters({
       </FilterSection>
 
       <FilterSection title="Term" className="shrink-0">
-        <TermFilterSelect value={term} onValueChange={setTerm} options={termOptions} />
+        <TermFilterSelect
+          value={term}
+          onValueChange={setTerm}
+          options={termOptions}
+          triggerClassName={glassFieldClass}
+        />
       </FilterSection>
     </aside>
   );
@@ -168,7 +188,7 @@ function FilterSection({
 }) {
   return (
     <section className={cn("space-y-3", className)}>
-      <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+      <h3 className="text-xs font-semibold uppercase tracking-wide text-foreground/70">
         {title}
       </h3>
       <div className="space-y-2">{children}</div>

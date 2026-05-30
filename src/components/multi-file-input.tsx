@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Paperclip, Plus, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -23,6 +23,10 @@ export function MultiFileInput({
   descriptionLabel = "Name",
   descriptionPlaceholder = "Add a description (optional)",
   descriptionRequired = false,
+  files: controlledFiles,
+  onFilesChange,
+  descriptions: controlledDescriptions,
+  onDescriptionsChange,
 }: {
   name: string;
   accept: string;
@@ -35,23 +39,44 @@ export function MultiFileInput({
   descriptionLabel?: string;
   descriptionPlaceholder?: string;
   descriptionRequired?: boolean;
+  files?: File[];
+  onFilesChange?: (files: File[]) => void;
+  descriptions?: string[];
+  onDescriptionsChange?: (descriptions: string[]) => void;
 }) {
-  const [files, setFiles] = useState<File[]>([]);
-  const [descriptions, setDescriptions] = useState<string[]>([]);
+  const [internalFiles, setInternalFiles] = useState<File[]>([]);
+  const [internalDescriptions, setInternalDescriptions] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
   const withDescriptions = !!descriptionName;
+  const files = controlledFiles ?? internalFiles;
+  const descriptions = controlledDescriptions ?? internalDescriptions;
   // Hidden input that actually gets submitted with the form. We keep its
   // FileList in sync with `files` via DataTransfer so the server action reads
   // them under `name` exactly as a native multi-file input would.
   const submitRef = useRef<HTMLInputElement>(null);
   const pickerRef = useRef<HTMLInputElement>(null);
+  const isGlass = variant === "glass";
 
-  function sync(next: File[]) {
+  function syncHiddenInput(next: File[]) {
     const dt = new DataTransfer();
     next.forEach((f) => dt.items.add(f));
     if (submitRef.current) submitRef.current.files = dt.files;
-    setFiles(next);
   }
+
+  function setFiles(next: File[]) {
+    if (onFilesChange) onFilesChange(next);
+    else setInternalFiles(next);
+    syncHiddenInput(next);
+  }
+
+  function setDescriptions(next: string[]) {
+    if (onDescriptionsChange) onDescriptionsChange(next);
+    else setInternalDescriptions(next);
+  }
+
+  useEffect(() => {
+    syncHiddenInput(files);
+  }, [files]);
 
   function onPick(e: React.ChangeEvent<HTMLInputElement>) {
     const picked = Array.from(e.target.files ?? []);
@@ -75,19 +100,18 @@ export function MultiFileInput({
     setError(nextError);
     const addedCount = next.length - files.length;
     if (addedCount > 0) {
-      setDescriptions((prev) => [...prev, ...Array<string>(addedCount).fill("")]);
+      setDescriptions([...descriptions, ...Array<string>(addedCount).fill("")]);
     }
-    sync(next);
+    setFiles(next);
   }
 
   function remove(index: number) {
     setError(null);
-    setDescriptions((prev) => prev.filter((_, i) => i !== index));
-    sync(files.filter((_, i) => i !== index));
+    setDescriptions(descriptions.filter((_, i) => i !== index));
+    setFiles(files.filter((_, i) => i !== index));
   }
 
   const atLimit = files.length >= maxFiles;
-  const isGlass = variant === "glass";
 
   return (
     <div className="space-y-2">
@@ -147,8 +171,8 @@ export function MultiFileInput({
                     required={descriptionRequired}
                     value={descriptions[i] ?? ""}
                     onChange={(e) =>
-                      setDescriptions((prev) =>
-                        prev.map((d, idx) => (idx === i ? e.target.value : d)),
+                      setDescriptions(
+                        descriptions.map((d, idx) => (idx === i ? e.target.value : d)),
                       )
                     }
                     placeholder={descriptionPlaceholder}

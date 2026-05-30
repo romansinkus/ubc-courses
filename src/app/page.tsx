@@ -3,6 +3,7 @@ import { SearchBox } from "@/components/search-box";
 import { LiveBackground } from "@/components/live-background";
 import { HomeStats, HomeStatsSkeleton } from "@/components/home-stats";
 import { HomeFiltersButton } from "@/components/home-filters-button";
+import { FiltersSheetTriggerSkeleton } from "@/components/filters-sheet";
 
 export const revalidate = 60;
 
@@ -18,9 +19,9 @@ export default function HomePage() {
           <h1 className="text-4xl font-bold tracking-tight">
             Honest reviews and crowd-sourced resources for UBC courses.
           </h1>
-          <div className="flex max-w-md mx-auto gap-2">
+          <div className="mx-auto flex w-full max-w-md gap-2">
             <SearchBox variant="glass" />
-            <Suspense fallback={null}>
+            <Suspense fallback={<FiltersSheetTriggerSkeleton />}>
               <HomeFiltersButton />
             </Suspense>
           </div>

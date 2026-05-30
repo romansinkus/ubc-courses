@@ -28,6 +28,8 @@ const TERM_LABEL: Record<string, string> = {
 export type CourseReviewCard = {
   id: string;
   isOwn: boolean;
+  courseCode?: string;
+  courseTitle?: string;
   professor: string | null;
   term: string;
   year: number;
@@ -63,9 +65,27 @@ function RatingStat({ label, value }: { label: string; value: number }) {
   );
 }
 
+function resolveCourseCode(r: CourseReviewCard, fallback?: string) {
+  return r.courseCode ?? fallback ?? "";
+}
+
 function ReviewBadges({ r }: { r: CourseReviewCard }) {
   return (
     <>
+      {r.courseCode ? (
+        <Badge variant="outline" className={glassBadgeClass}>
+          <Link
+            href={`/courses/${encodeURIComponent(r.courseCode)}`}
+            className="hover:underline"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {r.courseCode}
+          </Link>
+        </Badge>
+      ) : null}
+      {r.courseTitle ? (
+        <span className="text-xs font-normal text-muted-foreground">{r.courseTitle}</span>
+      ) : null}
       {r.medium ? (
         <Badge variant="secondary" className={glassBadgeClass}>
           {MEDIUM_LABEL[r.medium]}
@@ -168,9 +188,11 @@ function AttachmentLinks({ r }: { r: CourseReviewCard }) {
 export function CourseReviews({
   reviews,
   courseCode,
+  showAuthor = true,
 }: {
   reviews: CourseReviewCard[];
-  courseCode: string;
+  courseCode?: string;
+  showAuthor?: boolean;
 }) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const selected = reviews.find((r) => r.id === selectedId) ?? null;
@@ -179,6 +201,7 @@ export function CourseReviews({
     <>
       <div className="space-y-3">
         {reviews.map((r) => {
+          const reviewCourseCode = resolveCourseCode(r, courseCode);
           const attachmentCount =
             (r.syllabusPdfUrl ? 1 : 0) + (r.syllabusLink ? 1 : 0) + r.files.length;
           return (
@@ -186,7 +209,11 @@ export function CourseReviews({
               key={r.id}
               role="button"
               tabIndex={0}
-              aria-label={`Read review by @${r.username}`}
+              aria-label={
+                showAuthor
+                  ? `Read review by @${r.username}`
+                  : `Read review for ${reviewCourseCode || "course"}`
+              }
               onClick={() => setSelectedId(r.id)}
               onKeyDown={(e) => {
                 if (e.key === "Enter" || e.key === " ") {
@@ -209,7 +236,11 @@ export function CourseReviews({
                     onClick={(e) => e.stopPropagation()}
                     onKeyDown={(e) => e.stopPropagation()}
                   >
-                    <ReviewOwnerActions reviewId={r.id} courseCode={courseCode} variant="glass" />
+                    <ReviewOwnerActions
+                      reviewId={r.id}
+                      courseCode={reviewCourseCode}
+                      variant="glass"
+                    />
                   </div>
                 ) : null}
               </div>
@@ -233,16 +264,20 @@ export function CourseReviews({
                       {attachmentCount} attachment{attachmentCount === 1 ? "" : "s"}
                     </span>
                   ) : null}
-                  <span className="ml-auto font-normal text-muted-foreground">
-                    by{" "}
-                    <Link
-                      href={`/u/${r.username}`}
-                      className="hover:underline"
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      @{r.username}
-                    </Link>
-                  </span>
+                  {showAuthor ? (
+                    <span className="ml-auto font-normal text-muted-foreground">
+                      by{" "}
+                      <Link
+                        href={`/u/${r.username}`}
+                        className="hover:underline"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        @{r.username}
+                      </Link>
+                    </span>
+                  ) : (
+                    <span className="ml-auto font-normal text-muted-foreground">{r.dateLabel}</span>
+                  )}
                 </div>
               </div>
             </article>
@@ -262,10 +297,31 @@ export function CourseReviews({
           >
             <DialogHeader>
               <DialogTitle>
-                Review by{" "}
-                <Link href={`/u/${selected.username}`} className="hover:underline">
-                  @{selected.username}
-                </Link>
+                {showAuthor ? (
+                  <>
+                    Review by{" "}
+                    <Link href={`/u/${selected.username}`} className="hover:underline">
+                      @{selected.username}
+                    </Link>
+                  </>
+                ) : selected.courseCode ? (
+                  <>
+                    <Link
+                      href={`/courses/${encodeURIComponent(selected.courseCode)}`}
+                      className="hover:underline"
+                    >
+                      {selected.courseCode}
+                    </Link>
+                    {selected.courseTitle ? (
+                      <span className="font-normal text-muted-foreground">
+                        {" "}
+                        · {selected.courseTitle}
+                      </span>
+                    ) : null}
+                  </>
+                ) : (
+                  "Review"
+                )}
               </DialogTitle>
               <p className="text-xs text-muted-foreground">{selected.dateLabel}</p>
             </DialogHeader>
@@ -297,7 +353,10 @@ export function CourseReviews({
               </div>
 
               {selected.isOwn ? (
-                <ReviewOwnerActions reviewId={selected.id} courseCode={courseCode} />
+                <ReviewOwnerActions
+                  reviewId={selected.id}
+                  courseCode={resolveCourseCode(selected, courseCode)}
+                />
               ) : null}
             </div>
           </DialogContent>

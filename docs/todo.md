@@ -6,3 +6,5 @@
 ---
 * UI of reviews on the profile page
 * Shorten the area that holds the course subjects in the filter area on the home page
+* filter for only courses with reviews
+* Remove usernames from reviews -> remove usernames entirely?

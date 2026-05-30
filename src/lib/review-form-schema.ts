@@ -1,7 +1,8 @@
 import { z } from "zod";
 import { GROUPWORK_VALUES, groupworkToDb, type Groupwork } from "@/lib/groupwork";
-import { RATING_MAX, RATING_MIN } from "@/lib/ratings";
+import { RATING_DEFAULT, RATING_MAX, RATING_MIN } from "@/lib/ratings";
 import { parseTermValue } from "@/lib/terms";
+import { WOULD_RECOMMEND_VALUES, type WouldRecommend } from "@/lib/would-recommend";
 
 export const GRADES = ["A+", "A", "A-", "B+", "B", "B-", "C+", "C", "C-", "D", "F", "Credit"] as const;
 
@@ -63,6 +64,133 @@ export type ReviewFormDefaults = {
   hasSyllabusPdf: boolean;
   existingFiles: { id: string; originalName: string }[];
 };
+
+export type ReviewFormValues = {
+  termYear: string;
+  professor: string;
+  grade: string;
+  overallRating: string;
+  difficulty: string;
+  enjoyability: string;
+  usefulness: string;
+  medium: string;
+  hasFinalExam: string;
+  groupwork: string;
+  wouldRecommend: string;
+  workloadHours: string;
+  body: string;
+  syllabusLink: string;
+  fileDescriptions: string[];
+};
+
+export type ResolvedReviewFormFields = {
+  termYear: string;
+  professor: string | null;
+  grade: Grade | undefined;
+  overallRating: number;
+  difficulty: number;
+  enjoyability: number;
+  usefulness: number;
+  medium: ParsedReviewForm["medium"];
+  hasFinalExam: ParsedReviewForm["hasFinalExam"];
+  groupwork: Groupwork;
+  wouldRecommend: WouldRecommend;
+  workloadHours: string;
+  body: string;
+  syllabusLink: string;
+};
+
+const MEDIUM_VALUES = ["in_person", "hybrid", "online"] as const;
+const YES_NO_VALUES = ["yes", "no"] as const;
+
+function pickEnum<T extends string>(
+  raw: string | undefined,
+  allowed: readonly T[],
+  fallback: T,
+): T {
+  if (raw && (allowed as readonly string[]).includes(raw)) return raw as T;
+  return fallback;
+}
+
+function pickRating(raw: string | undefined, fallback: number): number {
+  const parsed = parseInt(raw ?? "", 10);
+  if (Number.isNaN(parsed)) return fallback;
+  return Math.min(RATING_MAX, Math.max(RATING_MIN, parsed));
+}
+
+function pickGrade(raw: string | undefined, fallback: Grade | null | undefined): Grade | undefined {
+  if (raw && GRADES.includes(raw as Grade)) return raw as Grade;
+  return fallback ?? undefined;
+}
+
+export function extractReviewFormValues(formData: FormData): ReviewFormValues {
+  return {
+    termYear: String(formData.get("termYear") ?? ""),
+    professor: String(formData.get("professor") ?? ""),
+    grade: String(formData.get("grade") ?? ""),
+    overallRating: String(formData.get("overallRating") ?? ""),
+    difficulty: String(formData.get("difficulty") ?? ""),
+    enjoyability: String(formData.get("enjoyability") ?? ""),
+    usefulness: String(formData.get("usefulness") ?? ""),
+    medium: String(formData.get("medium") ?? ""),
+    hasFinalExam: String(formData.get("hasFinalExam") ?? ""),
+    groupwork: String(formData.get("groupwork") ?? ""),
+    wouldRecommend: String(formData.get("wouldRecommend") ?? ""),
+    workloadHours: String(formData.get("workloadHours") ?? ""),
+    body: String(formData.get("body") ?? ""),
+    syllabusLink: String(formData.get("syllabusLink") ?? ""),
+    fileDescriptions: formData.getAll("fileDescriptions").map(String),
+  };
+}
+
+export function resolveReviewFormFields(
+  persisted: ReviewFormValues | null | undefined,
+  defaults: ReviewFormDefaults | undefined,
+  defaultTermYear: string,
+): ResolvedReviewFormFields {
+  const ratingDefault = defaults?.overallRating ?? RATING_DEFAULT;
+
+  if (persisted) {
+    return {
+      termYear: persisted.termYear || defaultTermYear,
+      professor: persisted.professor ? persisted.professor : null,
+      grade: pickGrade(persisted.grade, defaults?.grade),
+      overallRating: pickRating(persisted.overallRating, ratingDefault),
+      difficulty: pickRating(persisted.difficulty, defaults?.difficulty ?? ratingDefault),
+      enjoyability: pickRating(persisted.enjoyability, defaults?.enjoyability ?? ratingDefault),
+      usefulness: pickRating(persisted.usefulness, defaults?.usefulness ?? ratingDefault),
+      medium: pickEnum(persisted.medium, MEDIUM_VALUES, defaults?.medium ?? "hybrid"),
+      hasFinalExam: pickEnum(persisted.hasFinalExam, YES_NO_VALUES, defaults?.hasFinalExam ?? "no"),
+      groupwork: pickEnum(persisted.groupwork, GROUPWORK_VALUES, defaults?.groupwork ?? "optional"),
+      wouldRecommend: pickEnum(
+        persisted.wouldRecommend,
+        WOULD_RECOMMEND_VALUES,
+        defaults?.wouldRecommend ?? "maybe",
+      ),
+      workloadHours: persisted.workloadHours,
+      body: persisted.body,
+      syllabusLink: persisted.syllabusLink,
+    };
+  }
+
+  return {
+    termYear: defaults?.termYear || defaultTermYear,
+    professor: defaults?.professor ?? null,
+    grade: defaults?.grade ?? undefined,
+    overallRating: defaults?.overallRating ?? ratingDefault,
+    difficulty: defaults?.difficulty ?? ratingDefault,
+    enjoyability: defaults?.enjoyability ?? ratingDefault,
+    usefulness: defaults?.usefulness ?? ratingDefault,
+    medium: defaults?.medium ?? "hybrid",
+    hasFinalExam: defaults?.hasFinalExam ?? "no",
+    groupwork: defaults?.groupwork ?? "optional",
+    wouldRecommend: defaults?.wouldRecommend ?? "maybe",
+    workloadHours:
+      defaults?.workloadHours != null ? String(defaults.workloadHours) : "",
+    body: defaults?.body ?? "",
+    syllabusLink: defaults?.syllabusLink ?? "",
+  };
+}
 
 export function parseReviewFormData(formData: FormData) {
   const parsed = ReviewFormSchema.safeParse(Object.fromEntries(formData.entries()));

@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState, useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -25,6 +25,7 @@ import { cn } from "@/lib/utils";
 import type { TermOption } from "@/lib/terms";
 import {
   GRADES,
+  resolveReviewFormFields,
   type ReviewFormDefaults,
 } from "@/lib/review-form-schema";
 import {
@@ -40,7 +41,7 @@ import {
   type ReviewActionState,
 } from "./actions";
 
-const initialState: ReviewActionState = { error: null };
+const initialState: ReviewActionState = { error: null, values: null, resetKey: 0 };
 
 function ExistingAttachments({
   defaults,
@@ -116,11 +117,20 @@ export function ReviewForm({
   const [state, formAction, pending] = useActionState(action, initialState);
   const [removedFileIds, setRemovedFileIds] = useState<string[]>([]);
   const [syllabusRemoved, setSyllabusRemoved] = useState(false);
+  const [syllabusFiles, setSyllabusFiles] = useState<File[]>([]);
+  const [attachedFiles, setAttachedFiles] = useState<File[]>([]);
+  const [fileDescriptions, setFileDescriptions] = useState<string[]>([]);
+  const fields = resolveReviewFormFields(state.values, defaults, defaultTermYear);
+
+  useEffect(() => {
+    if (!state.values?.fileDescriptions.length) return;
+    setFileDescriptions(state.values.fileDescriptions);
+  }, [state.resetKey, state.values]);
 
   const isEdit = mode === "edit" && defaults;
 
   return (
-    <form action={formAction} className="space-y-6">
+    <form key={state.resetKey} action={formAction} className="space-y-6">
       <input type="hidden" name="courseCode" value={courseCode} />
       {reviewId ? <input type="hidden" name="reviewId" value={reviewId} /> : null}
       {syllabusRemoved ? <input type="hidden" name="removeSyllabusPdf" value="1" /> : null}
@@ -135,7 +145,7 @@ export function ReviewForm({
           <TermYearSelect
             id="termYear"
             name="termYear"
-            defaultValue={defaults?.termYear ?? defaultTermYear}
+            defaultValue={fields.termYear}
             options={termOptions}
             required
             variant="glass"
@@ -143,19 +153,16 @@ export function ReviewForm({
         </div>
       </section>
 
-      <section className={glassFormSectionClass}>
+      <section className={cn(glassFormSectionClass, "relative z-0 focus-within:z-50")}>
         <h2 className={glassFormSectionTitleClass}>Professor & grade</h2>
         <div className="grid grid-cols-2 gap-3">
           <div className="space-y-1.5">
             <Label htmlFor="professor">Professor</Label>
-            <ProfessorPicker
-              variant="glass"
-              defaultProfessor={defaults?.professor ?? null}
-            />
+            <ProfessorPicker variant="glass" defaultProfessor={fields.professor} />
           </div>
           <div className="space-y-1.5">
             <Label htmlFor="grade">Grade received</Label>
-            <Select name="grade" required defaultValue={defaults?.grade ?? undefined}>
+            <Select name="grade" required defaultValue={fields.grade}>
               <SelectTrigger id="grade" className={cn("w-full", glassFieldClass)}>
                 <SelectValue placeholder="Pick a grade" />
               </SelectTrigger>
@@ -179,28 +186,28 @@ export function ReviewForm({
             id="overallRating"
             name="overallRating"
             label="Overall"
-            defaultValue={defaults?.overallRating}
+            defaultValue={fields.overallRating}
             variant="glass"
           />
           <RatingBarInput
             id="difficulty"
             name="difficulty"
             label="Difficulty"
-            defaultValue={defaults?.difficulty}
+            defaultValue={fields.difficulty}
             variant="glass"
           />
           <RatingBarInput
             id="enjoyability"
             name="enjoyability"
             label="Enjoyability"
-            defaultValue={defaults?.enjoyability}
+            defaultValue={fields.enjoyability}
             variant="glass"
           />
           <RatingBarInput
             id="usefulness"
             name="usefulness"
             label="Usefulness"
-            defaultValue={defaults?.usefulness}
+            defaultValue={fields.usefulness}
             variant="glass"
           />
         </div>
@@ -218,32 +225,29 @@ export function ReviewForm({
               min={0}
               max={80}
               placeholder="10"
-              defaultValue={defaults?.workloadHours ?? undefined}
+              defaultValue={fields.workloadHours || undefined}
               className={glassFieldClass}
             />
           </div>
 
           <div className="space-y-1.5">
             <Label>Medium</Label>
-            <MediumPicker variant="glass" defaultValue={defaults?.medium ?? "hybrid"} />
+            <MediumPicker variant="glass" defaultValue={fields.medium} />
           </div>
 
           <div className="space-y-1.5">
             <Label>Is there a final exam?</Label>
-            <AssessmentTypePicker variant="glass" defaultValue={defaults?.hasFinalExam ?? "no"} />
+            <AssessmentTypePicker variant="glass" defaultValue={fields.hasFinalExam} />
           </div>
 
           <div className="space-y-1.5">
             <Label>Groupwork?</Label>
-            <GroupworkPicker variant="glass" defaultValue={defaults?.groupwork ?? "optional"} />
+            <GroupworkPicker variant="glass" defaultValue={fields.groupwork} />
           </div>
 
           <div className="space-y-1.5">
             <Label>Would recommend?</Label>
-            <WouldRecommendPicker
-              variant="glass"
-              defaultValue={defaults?.wouldRecommend ?? "maybe"}
-            />
+            <WouldRecommendPicker variant="glass" defaultValue={fields.wouldRecommend} />
           </div>
         </div>
       </section>
@@ -266,7 +270,7 @@ export function ReviewForm({
             rows={10}
             placeholder="Write your review…"
             aria-describedby={isEdit ? undefined : "body-prompts"}
-            defaultValue={defaults?.body ?? ""}
+            defaultValue={fields.body}
             className={cn(glassFieldClass, "min-h-40 [field-sizing:fixed]")}
           />
         </div>
@@ -296,6 +300,8 @@ export function ReviewForm({
               maxFiles={1}
               buttonLabel={isEdit ? "Replace syllabus PDF" : "Add syllabus PDF"}
               variant="glass"
+              files={syllabusFiles}
+              onFilesChange={setSyllabusFiles}
             />
             <div className="space-y-1.5 pt-1">
               <Label htmlFor="syllabusLink">Syllabus link</Label>
@@ -305,7 +311,7 @@ export function ReviewForm({
                 type="url"
                 inputMode="url"
                 placeholder="https://..."
-                defaultValue={defaults?.syllabusLink ?? ""}
+                defaultValue={fields.syllabusLink}
                 className={glassFieldClass}
               />
             </div>
@@ -325,6 +331,10 @@ export function ReviewForm({
               descriptionLabel="Name"
               descriptionPlaceholder="e.g. Midterm 1 study guide"
               descriptionRequired
+              files={attachedFiles}
+              onFilesChange={setAttachedFiles}
+              descriptions={fileDescriptions}
+              onDescriptionsChange={setFileDescriptions}
             />
           </div>
         </div>
@@ -333,9 +343,6 @@ export function ReviewForm({
       {state.error ? (
         <div className="space-y-1 text-sm text-red-600">
           <p>{state.error}</p>
-          <p className="text-muted-foreground">
-            If you attached files, you may need to add them again before resubmitting.
-          </p>
         </div>
       ) : null}
 

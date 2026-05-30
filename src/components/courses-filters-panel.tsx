@@ -1,3 +1,20 @@
+import { cn } from "@/lib/utils";
+import { glassSurfaceClass } from "@/lib/glass-styles";
+
+export function CoursesFiltersPanel({
+  children,
+  className,
+}: {
+  children: React.ReactNode;
+  className?: string;
+}) {
+  return (
+    <div className={cn("flex min-h-0 flex-col p-5", glassSurfaceClass, className)}>
+      {children}
+    </div>
+  );
+}
+
 export function CoursesFiltersSkeleton() {
   return (
     <div className="flex h-full min-h-0 flex-col gap-6" aria-busy="true" aria-label="Loading filters">
