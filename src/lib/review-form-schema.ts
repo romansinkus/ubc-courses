@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { GROUPWORK_VALUES, groupworkToDb, type Groupwork } from "@/lib/groupwork";
-import { RATING_DEFAULT, RATING_MAX, RATING_MIN } from "@/lib/ratings";
+import { RATING_DEFAULT, RATING_MAX, RATING_MIN, RATING_STEP } from "@/lib/ratings";
 import { parseTermValue } from "@/lib/terms";
 import { WOULD_RECOMMEND_VALUES, type WouldRecommend } from "@/lib/would-recommend";
 
@@ -16,10 +16,10 @@ export const ReviewFormSchema = z.object({
     .min(1)
     .refine((v) => parseTermValue(v) !== null, "Pick a valid term"),
   grade: z.enum(GRADES),
-  overallRating: z.coerce.number().int().min(RATING_MIN).max(RATING_MAX),
-  difficulty: z.coerce.number().int().min(RATING_MIN).max(RATING_MAX),
-  enjoyability: z.coerce.number().int().min(RATING_MIN).max(RATING_MAX),
-  usefulness: z.coerce.number().int().min(RATING_MIN).max(RATING_MAX),
+  overallRating: z.coerce.number().min(RATING_MIN).max(RATING_MAX).multipleOf(RATING_STEP),
+  difficulty: z.coerce.number().min(RATING_MIN).max(RATING_MAX).multipleOf(RATING_STEP),
+  enjoyability: z.coerce.number().min(RATING_MIN).max(RATING_MAX).multipleOf(RATING_STEP),
+  usefulness: z.coerce.number().min(RATING_MIN).max(RATING_MAX).multipleOf(RATING_STEP),
   medium: z.enum(["in_person", "hybrid", "online"]),
   hasFinalExam: z.enum(["yes", "no"]),
   workloadHours: z.preprocess(
@@ -113,9 +113,10 @@ function pickEnum<T extends string>(
 }
 
 function pickRating(raw: string | undefined, fallback: number): number {
-  const parsed = parseInt(raw ?? "", 10);
+  const parsed = parseFloat(raw ?? "");
   if (Number.isNaN(parsed)) return fallback;
-  return Math.min(RATING_MAX, Math.max(RATING_MIN, parsed));
+  const snapped = Math.round(parsed / RATING_STEP) * RATING_STEP;
+  return Math.min(RATING_MAX, Math.max(RATING_MIN, snapped));
 }
 
 function pickGrade(raw: string | undefined, fallback: Grade | null | undefined): Grade | undefined {

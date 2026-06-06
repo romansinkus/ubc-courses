@@ -4,11 +4,13 @@ import {
   text,
   integer,
   smallint,
+  real,
   boolean,
   timestamp,
   pgEnum,
   index,
   uniqueIndex,
+  primaryKey,
 } from "drizzle-orm/pg-core";
 import { relations, sql } from "drizzle-orm";
 
@@ -75,10 +77,10 @@ export const reviews = pgTable(
     term: termEnum("term").notNull(),
     year: integer("year").notNull(),
     grade: text("grade"),
-    overallRating: smallint("overall_rating").notNull(),
-    difficulty: smallint("difficulty").notNull(),
-    enjoyability: smallint("enjoyability"),
-    usefulness: smallint("usefulness"),
+    overallRating: real("overall_rating").notNull(),
+    difficulty: real("difficulty").notNull(),
+    enjoyability: real("enjoyability"),
+    usefulness: real("usefulness"),
     medium: courseMediumEnum("medium"),
     hasFinalExam: boolean("has_final_exam"),
     workloadHours: smallint("workload_hours"),
@@ -114,6 +116,25 @@ export const reviewFiles = pgTable(
   (t) => [index("review_files_review_idx").on(t.reviewId)],
 );
 
+export const reviewVotes = pgTable(
+  "review_votes",
+  {
+    reviewId: uuid("review_id")
+      .notNull()
+      .references(() => reviews.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => profiles.id, { onDelete: "cascade" }),
+    // +1 for an upvote, -1 for a downvote.
+    value: smallint("value").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.reviewId, t.userId] }),
+    index("review_votes_review_idx").on(t.reviewId),
+  ],
+);
+
 export const profilesRelations = relations(profiles, ({ many }) => ({
   reviews: many(reviews),
 }));
@@ -147,3 +168,5 @@ export type Review = typeof reviews.$inferSelect;
 export type NewReview = typeof reviews.$inferInsert;
 export type ReviewFile = typeof reviewFiles.$inferSelect;
 export type NewReviewFile = typeof reviewFiles.$inferInsert;
+export type ReviewVote = typeof reviewVotes.$inferSelect;
+export type NewReviewVote = typeof reviewVotes.$inferInsert;

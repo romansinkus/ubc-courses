@@ -16,8 +16,10 @@ import { CourseDocuments, type CourseDocument } from "@/components/course-docume
 import { CourseToggleCharts, type ToggleChart } from "@/components/course-toggle-charts";
 import { MEDIUM_LABEL } from "@/components/medium-picker";
 import { syllabusPdfPublicUrl } from "@/lib/syllabus";
+import { RATING_MAX } from "@/lib/ratings";
 import { formatTermLabel } from "@/lib/terms";
 import { getCurrentUser } from "@/lib/auth";
+import { loadVoteData, sortByVotes } from "@/lib/review-votes";
 import { cn } from "@/lib/utils";
 import {
   glassContentCardClass,
@@ -184,7 +186,10 @@ export default async function CoursePage({ params }: { params: Params }) {
     month: "short",
     day: "numeric",
   });
-  const reviewCards: CourseReviewCard[] = courseReviews.map((r) => {
+  const { scores, myVotes } = await loadVoteData(reviewIds, currentUser?.id ?? null);
+  const sortedReviews = sortByVotes(courseReviews, scores);
+
+  const reviewCards: CourseReviewCard[] = sortedReviews.map((r) => {
     const syllabusPdfUrl = r.syllabusPath ? syllabusPdfPublicUrl(r.syllabusPath) : null;
     const syllabusLink =
       r.syllabusUrl && r.syllabusUrl !== syllabusPdfUrl ? r.syllabusUrl : null;
@@ -205,6 +210,8 @@ export default async function CoursePage({ params }: { params: Params }) {
       wouldRecommend: r.wouldRecommend,
       groupwork: r.groupwork,
       body: r.body,
+      voteScore: scores.get(r.id) ?? 0,
+      myVote: myVotes.get(r.id) ?? 0,
       username: r.username,
       dateLabel: dateFormat.format(r.createdAt),
       syllabusPdfUrl,
@@ -240,7 +247,7 @@ export default async function CoursePage({ params }: { params: Params }) {
     }
     return [...counts.entries()]
       .sort((a, b) => b[0] - a[0])
-      .map(([value, count]) => ({ label: `${value}/10`, count }));
+      .map(([value, count]) => ({ label: `${value}/${RATING_MAX}`, count }));
   };
   const workloadBins = () => {
     const labels = ["0–4 h", "5–9 h", "10–14 h", "15–19 h", "20+ h"];
@@ -314,7 +321,7 @@ export default async function CoursePage({ params }: { params: Params }) {
                 <p className="text-sm text-muted-foreground">
                   {stats.count} review{stats.count === 1 ? "" : "s"} ·{" "}
                   <span className="font-medium text-foreground">
-                    {stats.avgRating.toFixed(1)}/10 overall
+                    {stats.avgRating.toFixed(1)}/{RATING_MAX} overall
                   </span>
                 </p>
               ) : null}
@@ -362,7 +369,13 @@ export default async function CoursePage({ params }: { params: Params }) {
         {reviewCards.length > 0 && (
           <section className="space-y-4">
             <h2 className={cn(glassFormSectionTitleClass, "px-1 text-base")}>Reviews</h2>
-            <CourseReviews reviews={reviewCards} courseCode={course.code} showAuthor={false} />
+            <CourseReviews
+              reviews={reviewCards}
+              courseCode={course.code}
+              showAuthor={false}
+              isSignedIn={currentUser != null}
+              loginHref={`/login?next=${encodeURIComponent(`/courses/${encodeURIComponent(course.code)}`)}`}
+            />
           </section>
         )}
       </div>

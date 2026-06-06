@@ -7,6 +7,7 @@ import { db } from "@/db";
 import { courses, professors, profiles, reviewFiles, reviews } from "@/db/schema";
 import { desc, eq, inArray } from "drizzle-orm";
 import { getCurrentUser } from "@/lib/auth";
+import { loadVoteData, sortByVotes } from "@/lib/review-votes";
 import { signOut } from "@/app/login/actions";
 import { syllabusPdfPublicUrl } from "@/lib/syllabus";
 import { cn } from "@/lib/utils";
@@ -90,7 +91,10 @@ export default async function UserProfilePage({ params }: { params: Params }) {
     month: "short",
     day: "numeric",
   });
-  const reviewCards: CourseReviewCard[] = userReviews.map((r) => {
+  const { scores, myVotes } = await loadVoteData(reviewIds, currentUser?.id ?? null);
+  const sortedReviews = sortByVotes(userReviews, scores);
+
+  const reviewCards: CourseReviewCard[] = sortedReviews.map((r) => {
     const syllabusPdfUrl = r.syllabusPath ? syllabusPdfPublicUrl(r.syllabusPath) : null;
     const syllabusLink =
       r.syllabusUrl && r.syllabusUrl !== syllabusPdfUrl ? r.syllabusUrl : null;
@@ -113,6 +117,8 @@ export default async function UserProfilePage({ params }: { params: Params }) {
       wouldRecommend: r.wouldRecommend,
       groupwork: r.groupwork,
       body: r.body,
+      voteScore: scores.get(r.id) ?? 0,
+      myVote: myVotes.get(r.id) ?? 0,
       username: profile.username,
       dateLabel: dateFormat.format(r.createdAt),
       syllabusPdfUrl,
@@ -165,7 +171,12 @@ export default async function UserProfilePage({ params }: { params: Params }) {
         ) : (
           <div className="space-y-4">
             <h2 className={cn(glassFormSectionTitleClass, "px-1")}>Reviews</h2>
-            <CourseReviews reviews={reviewCards} showAuthor={false} />
+            <CourseReviews
+              reviews={reviewCards}
+              showAuthor={false}
+              isSignedIn={currentUser != null}
+              loginHref={`/login?next=${encodeURIComponent(`/u/${profile.username}`)}`}
+            />
           </div>
         )}
       </div>

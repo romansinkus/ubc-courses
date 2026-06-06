@@ -6,10 +6,12 @@ import { Download, FileText, Paperclip } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ReviewOwnerActions } from "@/components/review-owner-actions";
+import { ReviewVote } from "@/components/review-vote";
 import { finalExamLabel } from "@/components/assessment-type-picker";
 import { MEDIUM_LABEL } from "@/components/medium-picker";
 import { WOULD_RECOMMEND_BADGE_LABEL } from "@/lib/would-recommend";
 import { downloadUrl } from "@/lib/storage-url";
+import { RATING_MAX } from "@/lib/ratings";
 import { formatTermLabel } from "@/lib/terms";
 import { cn } from "@/lib/utils";
 import {
@@ -44,6 +46,8 @@ export type CourseReviewCard = {
   wouldRecommend: keyof typeof WOULD_RECOMMEND_BADGE_LABEL | null;
   groupwork: boolean | null;
   body: string;
+  voteScore: number;
+  myVote: number;
   username: string;
   dateLabel: string;
   syllabusPdfUrl: string | null;
@@ -59,7 +63,7 @@ function RatingStat({ label, value }: { label: string; value: number }) {
       </span>
       <span className="text-lg font-semibold leading-none tabular-nums">
         {value}
-        <span className="text-xs font-normal text-muted-foreground">/10</span>
+        <span className="text-xs font-normal text-muted-foreground">/{RATING_MAX}</span>
       </span>
     </div>
   );
@@ -189,10 +193,14 @@ export function CourseReviews({
   reviews,
   courseCode,
   showAuthor = true,
+  isSignedIn = false,
+  loginHref = "/login",
 }: {
   reviews: CourseReviewCard[];
   courseCode?: string;
   showAuthor?: boolean;
+  isSignedIn?: boolean;
+  loginHref?: string;
 }) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const selected = reviews.find((r) => r.id === selectedId) ?? null;
@@ -223,9 +231,18 @@ export function CourseReviews({
               }}
               className={cn(
                 glassContentCardClass,
-                "cursor-pointer space-y-3 transition-all duration-150 hover:-translate-y-0.5 hover:border-ubc-blue-400/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+                "cursor-pointer transition-all duration-150 hover:-translate-y-0.5 hover:border-ubc-blue-400/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
               )}
             >
+              <div className="flex gap-3">
+                <ReviewVote
+                  reviewId={r.id}
+                  score={r.voteScore}
+                  myVote={r.myVote}
+                  isSignedIn={isSignedIn}
+                  loginHref={loginHref}
+                />
+                <div className="min-w-0 flex-1 space-y-3">
               <div className="flex items-start justify-between gap-2">
                 <div className="flex flex-wrap items-center gap-2 text-sm font-medium">
                   <ReviewBadges r={r} />
@@ -255,7 +272,12 @@ export function CourseReviews({
                 ) : null}
               </div>
               <div className="space-y-2 text-sm">
-                <p className="line-clamp-3 whitespace-pre-wrap text-muted-foreground">{r.body}</p>
+                <div className={cn(glassTileClass, "flex flex-col gap-0.5 px-3 py-2")}>
+                  <span className="text-[0.65rem] font-medium uppercase tracking-wide text-muted-foreground">
+                    Review
+                  </span>
+                  <p className="line-clamp-3 whitespace-pre-wrap text-foreground">{r.body}</p>
+                </div>
                 <div className="flex items-center gap-3 text-xs font-medium text-primary">
                   <span>Read full review →</span>
                   {attachmentCount > 0 ? (
@@ -278,6 +300,8 @@ export function CourseReviews({
                   ) : (
                     <span className="ml-auto font-normal text-muted-foreground">{r.dateLabel}</span>
                   )}
+                </div>
+              </div>
                 </div>
               </div>
             </article>
@@ -342,9 +366,11 @@ export function CourseReviews({
                 ) : null}
               </div>
 
-              <div className="space-y-2">
-                <h3 className="text-sm font-semibold">Review</h3>
-                <p className="whitespace-pre-wrap text-sm">{selected.body}</p>
+              <div className={cn(glassTileClass, "flex flex-col gap-0.5 px-3 py-2")}>
+                <span className="text-[0.65rem] font-medium uppercase tracking-wide text-muted-foreground">
+                  Review
+                </span>
+                <p className="whitespace-pre-wrap text-sm text-foreground">{selected.body}</p>
               </div>
 
               <div className="space-y-2">

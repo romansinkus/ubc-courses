@@ -180,7 +180,7 @@ export function ReviewForm({
 
       <section className={glassFormSectionClass}>
         <h2 className={glassFormSectionTitleClass}>Ratings</h2>
-        <p className="text-sm text-muted-foreground">All ratings use a 0–10 scale.</p>
+        <p className="text-sm text-muted-foreground">All ratings use a 0–5 scale.</p>
         <div className="space-y-4">
           <RatingBarInput
             id="overallRating"

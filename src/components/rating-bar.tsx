@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useState } from "react";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 import { glassFieldClass } from "@/lib/glass-styles";
@@ -8,12 +8,14 @@ import {
   RATING_DEFAULT,
   RATING_MAX,
   RATING_MIN,
+  RATING_STEP,
   RATING_VALUES,
   ratingToPercent,
 } from "@/lib/ratings";
 
 function clampRating(value: number): number {
-  return Math.min(RATING_MAX, Math.max(RATING_MIN, Math.round(value)));
+  const snapped = Math.round(value / RATING_STEP) * RATING_STEP;
+  return Math.min(RATING_MAX, Math.max(RATING_MIN, snapped));
 }
 
 function RatingScoreInput({
@@ -34,7 +36,7 @@ function RatingScoreInput({
   const isGlass = variant === "glass";
 
   function commit(raw: string) {
-    const parsed = parseInt(raw, 10);
+    const parsed = parseFloat(raw);
     if (!Number.isNaN(parsed)) {
       const clamped = clampRating(parsed);
       onChange(clamped);
@@ -51,10 +53,10 @@ function RatingScoreInput({
         isGlass ? glassFieldClass : "border-input bg-background",
         focused && "ring-2 ring-ring/50",
       )}
-      title="Click or Tab here, then type 0–10"
+      title={`Click or Tab here, then type ${RATING_MIN}–${RATING_MAX}`}
     >
       <label htmlFor={id} className="sr-only">
-        {label} score (type 0 to 10)
+        {label} score (type {RATING_MIN} to {RATING_MAX})
       </label>
       <input
         id={id}
@@ -62,20 +64,21 @@ function RatingScoreInput({
         inputMode="numeric"
         autoComplete="off"
         spellCheck={false}
-        maxLength={2}
+        maxLength={3}
         aria-label={`${label} score`}
-        placeholder={focused ? "0–10" : undefined}
+        placeholder={focused ? `${RATING_MIN}–${RATING_MAX}` : undefined}
         value={focused ? draft : String(value)}
         onFocus={() => {
           setDraft(String(value));
           setFocused(true);
         }}
         onChange={(e) => {
-          const next = e.target.value.replace(/\D/g, "");
+          // Allow digits and a single decimal point (e.g. "3.5").
+          const next = e.target.value.replace(/[^0-9.]/g, "").replace(/(\..*)\./g, "$1");
           setDraft(next);
-          const parsed = parseInt(next, 10);
+          const parsed = parseFloat(next);
           if (!Number.isNaN(parsed) && parsed >= RATING_MIN && parsed <= RATING_MAX) {
-            onChange(parsed);
+            onChange(clampRating(parsed));
           }
         }}
         onBlur={() => {
@@ -91,56 +94,27 @@ function RatingScoreInput({
         className="h-7 w-9 border-0 bg-transparent px-0 text-right outline-none placeholder:text-muted-foreground/70"
       />
       <span className="text-muted-foreground select-none" aria-hidden>
-        /10
+        /{RATING_MAX}
       </span>
     </div>
   );
 }
 
 function useDigitEntry(onChange?: (value: number) => void) {
-  const pendingRef = useRef<{ timeout: ReturnType<typeof setTimeout> } | null>(null);
-
-  function clearPending() {
-    if (pendingRef.current) {
-      clearTimeout(pendingRef.current.timeout);
-      pendingRef.current = null;
-    }
-  }
-
+  // A 0–5 scale fits in a single keystroke, so a digit key maps directly to a
+  // whole rating. Half-steps are reached via the arrow keys or the score input.
   function handleDigitKey(e: React.KeyboardEvent) {
     if (!onChange || !/^[0-9]$/.test(e.key)) return false;
 
     e.preventDefault();
     const digit = parseInt(e.key, 10);
-
-    if (pendingRef.current && digit === 0) {
-      clearPending();
-      onChange(10);
-      return true;
+    if (digit >= RATING_MIN && digit <= RATING_MAX) {
+      onChange(digit);
     }
-
-    clearPending();
-
-    if (digit === 0) {
-      onChange(0);
-      return true;
-    }
-
-    if (digit === 1) {
-      pendingRef.current = {
-        timeout: setTimeout(() => {
-          onChange(1);
-          pendingRef.current = null;
-        }, 450),
-      };
-      return true;
-    }
-
-    onChange(digit);
     return true;
   }
 
-  return { handleDigitKey, clearPending };
+  return { handleDigitKey };
 }
 
 function RatingNotch({
@@ -209,7 +183,7 @@ function RatingTrack({
   className?: string;
 }) {
   const thumbLeft = ratingToPercent(value);
-  const { handleDigitKey, clearPending } = useDigitEntry(onChange);
+  const { handleDigitKey } = useDigitEntry(onChange);
   const isAverageDisplay = displayMode === "average" && !interactive;
 
   return (
@@ -233,14 +207,12 @@ function RatingTrack({
             ? (e) => {
                 if (handleDigitKey(e)) return;
 
-                clearPending();
-
                 if (e.key === "ArrowRight" || e.key === "ArrowUp") {
                   e.preventDefault();
-                  onChange(Math.min(RATING_MAX, value + 1));
+                  onChange(clampRating(value + RATING_STEP));
                 } else if (e.key === "ArrowLeft" || e.key === "ArrowDown") {
                   e.preventDefault();
-                  onChange(Math.max(RATING_MIN, value - 1));
+                  onChange(clampRating(value - RATING_STEP));
                 } else if (e.key === "Home") {
                   e.preventDefault();
                   onChange(RATING_MIN);
@@ -345,7 +317,7 @@ export function RatingBarDisplay({
   compact?: boolean;
   average?: boolean;
 }) {
-  const scoreText = average ? `${value.toFixed(1)}/10` : `${value}/10`;
+  const scoreText = average ? `${value.toFixed(1)}/${RATING_MAX}` : `${value}/${RATING_MAX}`;
 
   return (
     <div className={cn("space-y-1", compact && "min-w-[8rem]")}>

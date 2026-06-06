@@ -1,5 +1,6 @@
 import { StatCard, type DistributionBin } from "@/components/stat-card";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { RATING_MAX } from "@/lib/ratings";
 
 export type CourseAggregateStats = {
   count: number;
@@ -98,7 +99,7 @@ export function CourseAggregateSummary({
           <StatCard
             label="Overall"
             value={stats.avgRating.toFixed(1)}
-            unit="/10"
+            unit={`/${RATING_MAX}`}
             distribution={distributions.overall}
           />
         ) : null}
@@ -106,7 +107,7 @@ export function CourseAggregateSummary({
           <StatCard
             label="Difficulty"
             value={stats.avgDifficulty.toFixed(1)}
-            unit="/10"
+            unit={`/${RATING_MAX}`}
             distribution={distributions.difficulty}
           />
         ) : null}
@@ -114,7 +115,7 @@ export function CourseAggregateSummary({
           <StatCard
             label="Enjoyability"
             value={stats.avgEnjoyability.toFixed(1)}
-            unit="/10"
+            unit={`/${RATING_MAX}`}
             distribution={distributions.enjoyability}
           />
         ) : null}
@@ -122,7 +123,7 @@ export function CourseAggregateSummary({
           <StatCard
             label="Usefulness"
             value={stats.avgUsefulness.toFixed(1)}
-            unit="/10"
+            unit={`/${RATING_MAX}`}
             distribution={distributions.usefulness}
           />
         ) : null}
