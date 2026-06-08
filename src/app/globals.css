@@ -137,24 +137,24 @@
 
 @keyframes drift-1 {
   0%, 100% { transform: translate3d(0, 0, 0) scale(1); }
-  50% { transform: translate3d(90px, 60px, 0) scale(1.1); }
+  50% { transform: translate3d(130px, 90px, 0) scale(1.16); }
 }
 @keyframes drift-2 {
   0%, 100% { transform: translate3d(0, 0, 0) scale(1); }
-  50% { transform: translate3d(-80px, 100px, 0) scale(1.08); }
+  50% { transform: translate3d(-120px, 140px, 0) scale(1.14); }
 }
 @keyframes drift-3 {
   0%, 100% { transform: translate3d(0, 0, 0) scale(1); }
-  50% { transform: translate3d(70px, -80px, 0) scale(1.12); }
+  50% { transform: translate3d(110px, -115px, 0) scale(1.18); }
 }
 @keyframes drift-4 {
   0%, 100% { transform: translate3d(-50%, -50%, 0) scale(1); }
-  50% { transform: translate3d(calc(-50% + 50px), calc(-50% - 40px), 0) scale(1.15); }
+  50% { transform: translate3d(calc(-50% + 80px), calc(-50% - 65px), 0) scale(1.2); }
 }
-.animate-drift-1 { animation: drift-1 20s ease-in-out infinite; }
-.animate-drift-2 { animation: drift-2 26s ease-in-out infinite; }
-.animate-drift-3 { animation: drift-3 23s ease-in-out infinite; }
-.animate-drift-4 { animation: drift-4 30s ease-in-out infinite; }
+.animate-drift-1 { animation: drift-1 16s ease-in-out infinite; }
+.animate-drift-2 { animation: drift-2 19s ease-in-out infinite; }
+.animate-drift-3 { animation: drift-3 17s ease-in-out infinite; }
+.animate-drift-4 { animation: drift-4 22s ease-in-out infinite; }
 
 /* Stat cards: quick hop near the start of each cycle, then rest. Staggering the
    animation-delay per card produces a left → middle → right wave. */
@@ -172,9 +172,18 @@
 }
 .animate-stat-skeleton { animation: stat-skeleton 1.4s ease-in-out infinite; }
 
+/* Gentle fade applied on every route change via app/template.tsx. Opacity only
+   (no transform) so the fixed LiveBackground isn't pulled into a containing
+   block and made to jump mid-animation. */
+@keyframes page-enter {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+.animate-page-enter { animation: page-enter 280ms ease-out; }
+
 @media (prefers-reduced-motion: reduce) {
   .animate-drift-1, .animate-drift-2, .animate-drift-3, .animate-drift-4,
-  .animate-stat-jump, .animate-stat-skeleton { animation: none; }
+  .animate-stat-jump, .animate-stat-skeleton, .animate-page-enter { animation: none; }
 }
 
 @layer base {

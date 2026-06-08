@@ -23,7 +23,10 @@ export const glassHeaderClass =
 export const glassSiteLogoClass =
   "group relative inline-block text-lg font-semibold tracking-tight transition-all duration-200 ease-out hover:-translate-y-0.5 hover:scale-[1.03] hover:text-primary motion-reduce:transition-none motion-reduce:hover:translate-y-0 motion-reduce:hover:scale-100 after:absolute after:-bottom-0.5 after:left-0 after:h-0.5 after:w-full after:origin-left after:scale-x-0 after:rounded-full after:bg-primary after:transition-transform after:duration-200 group-hover:after:scale-x-100 motion-reduce:after:hidden";
 
-export const glassNavLinkClass = `${primaryActionButtonClass} inline-flex h-10 items-center gap-1.5 rounded-xl px-3.5 text-sm font-medium hover:-translate-y-0.5 hover:scale-[1.03] motion-reduce:hover:translate-y-0 motion-reduce:hover:scale-100 [&_svg]:size-4 [&_svg]:shrink-0`;
+// Plain text nav links that match the site title's treatment (hover color +
+// animated underline) rather than looking like solid buttons.
+export const glassNavTextLinkClass =
+  "group relative inline-block text-lg font-semibold tracking-tight transition-all duration-200 ease-out hover:-translate-y-0.5 hover:scale-[1.03] hover:text-primary motion-reduce:transition-none motion-reduce:hover:translate-y-0 motion-reduce:hover:scale-100 after:absolute after:-bottom-0.5 after:left-0 after:h-0.5 after:w-full after:origin-left after:scale-x-0 after:rounded-full after:bg-primary after:transition-transform after:duration-200 group-hover:after:scale-x-100 motion-reduce:after:hidden";
 
 export const glassNavIconButtonClass = `${primaryActionButtonClass} inline-flex h-10 w-10 items-center justify-center rounded-xl hover:-translate-y-0.5 hover:scale-[1.03] motion-reduce:hover:translate-y-0 motion-reduce:hover:scale-100 [&_svg]:size-[1.125rem]`;
 

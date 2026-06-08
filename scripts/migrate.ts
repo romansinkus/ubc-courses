@@ -25,6 +25,12 @@ async function main() {
       )
     `;
 
+    // Lock this bookkeeping table down: in the public schema it's otherwise
+    // reachable via Supabase's anon REST API (flagged as rls_disabled_in_public).
+    // No policies are needed — this connection is the table owner and bypasses
+    // RLS, while anon/authenticated roles are denied all rows.
+    await sql`ALTER TABLE "__migrations" ENABLE ROW LEVEL SECURITY`;
+
     // Bootstrap: if the schema already exists (older runs of this script before
     // tracking was added), mark the original two migrations as applied so we
     // don't try to re-run them.

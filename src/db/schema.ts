@@ -135,6 +135,18 @@ export const reviewVotes = pgTable(
   ],
 );
 
+export const feedback = pgTable(
+  "feedback",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    // Nullable so anonymous (signed-out) visitors can submit too.
+    userId: uuid("user_id").references(() => profiles.id, { onDelete: "set null" }),
+    body: text("body").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => [index("feedback_created_at_idx").on(t.createdAt)],
+);
+
 export const profilesRelations = relations(profiles, ({ many }) => ({
   reviews: many(reviews),
 }));
@@ -170,3 +182,5 @@ export type ReviewFile = typeof reviewFiles.$inferSelect;
 export type NewReviewFile = typeof reviewFiles.$inferInsert;
 export type ReviewVote = typeof reviewVotes.$inferSelect;
 export type NewReviewVote = typeof reviewVotes.$inferInsert;
+export type Feedback = typeof feedback.$inferSelect;
+export type NewFeedback = typeof feedback.$inferInsert;

@@ -1,6 +1,7 @@
 import { cache } from "react";
 import type { Metadata } from "next";
 import Link from "next/link";
+import { ArrowLeft } from "lucide-react";
 import { buttonVariants } from "@/components/ui/button";
 import { LiveBackground } from "@/components/live-background";
 import { db } from "@/db";
@@ -24,10 +25,18 @@ import { cn } from "@/lib/utils";
 import {
   glassContentCardClass,
   glassFormSectionTitleClass,
+  glassOutlineButtonClass,
   glassSurfaceClass,
 } from "@/lib/glass-styles";
 
 type Params = Promise<{ code: string }>;
+type SearchParams = Promise<{
+  from?: string;
+  axes?: string;
+  subject?: string;
+  x?: string;
+  y?: string;
+}>;
 
 // Shared by generateMetadata and the page so we only hit the DB once per request.
 const getCourse = cache(async (courseCode: string) => {
@@ -76,10 +85,30 @@ export async function generateMetadata({ params }: { params: Params }): Promise<
   };
 }
 
-export default async function CoursePage({ params }: { params: Params }) {
+export default async function CoursePage({
+  params,
+  searchParams,
+}: {
+  params: Params;
+  searchParams: SearchParams;
+}) {
   const { code } = await params;
+  const sp = await searchParams;
   const courseCode = decodeURIComponent(code).toUpperCase();
   const currentUser = await getCurrentUser();
+
+  // When the user arrived from the compare graph, offer a back link that
+  // restores the selections they made there.
+  const backToCompareHref = (() => {
+    if (sp.from !== "compare") return null;
+    const qs = new URLSearchParams();
+    if (sp.axes) qs.set("axes", sp.axes);
+    if (sp.subject) qs.set("subject", sp.subject);
+    if (sp.x) qs.set("x", sp.x);
+    if (sp.y) qs.set("y", sp.y);
+    const query = qs.toString();
+    return query ? `/compare?${query}` : "/compare";
+  })();
 
   const course = await getCourse(courseCode);
   if (!course) {
@@ -311,6 +340,19 @@ export default async function CoursePage({ params }: { params: Params }) {
     <>
       <LiveBackground />
       <div className="relative mx-auto max-w-3xl space-y-8 px-4 py-10 pb-16">
+        {backToCompareHref ? (
+          <Link
+            href={backToCompareHref}
+            className={cn(
+              buttonVariants({ variant: "outline", size: "sm" }),
+              glassOutlineButtonClass,
+              "inline-flex w-fit",
+            )}
+          >
+            <ArrowLeft className="size-4" />
+            Back to compare
+          </Link>
+        ) : null}
         <div className={cn(glassSurfaceClass, "rounded-2xl p-6 sm:p-8")}>
           <div className="flex items-start justify-between gap-4">
             <div className="space-y-1">

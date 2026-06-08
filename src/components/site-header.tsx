@@ -1,8 +1,9 @@
 import Link from "next/link";
-import { Compass, User } from "lucide-react";
+import { User } from "lucide-react";
 import { getCurrentProfile } from "@/lib/auth";
 import { profileNeedsUsername } from "@/lib/username";
-import { glassHeaderClass, glassNavIconButtonClass, glassNavLinkClass, glassSiteLogoClass } from "@/lib/glass-styles";
+import { NavTabs } from "@/components/nav-tabs";
+import { glassHeaderClass, glassNavIconButtonClass, glassNavTextLinkClass, glassSiteLogoClass } from "@/lib/glass-styles";
 import { cn } from "@/lib/utils";
 
 export async function SiteHeader() {
@@ -10,19 +11,24 @@ export async function SiteHeader() {
 
   return (
     <header className={cn("sticky top-0 z-40", glassHeaderClass)}>
-      <div className="mx-auto flex h-14 max-w-5xl items-center justify-between px-4">
-        <Link href="/" className={glassSiteLogoClass}>
+      <div className="grid h-14 w-full grid-cols-[1fr_auto_1fr] items-center px-6">
+        <Link href="/" className={cn(glassSiteLogoClass, "justify-self-start")}>
           UBC-Courses
         </Link>
-        <nav className="flex items-center gap-2 text-sm">
-          <Link href="/courses" className={glassNavLinkClass}>
-            <Compass aria-hidden="true" />
-            Browse
-          </Link>
+        <NavTabs
+          tabs={[
+            { href: "/", label: "Home" },
+            { href: "/courses", label: "Browse" },
+            { href: "/compare", label: "Compare" },
+            { href: "/advisor", label: "Advisor" },
+            { href: "/documents", label: "Documents" },
+            { href: "/feedback", label: "Feedback" },
+          ]}
+        />
+        <div className="justify-self-end">
           {profile ? (
             profileNeedsUsername(profile) ? (
-              <Link href="/welcome" className={glassNavLinkClass}>
-                <User aria-hidden="true" />
+              <Link href="/welcome" className={glassNavTextLinkClass}>
                 Finish setup
               </Link>
             ) : (
@@ -36,12 +42,11 @@ export async function SiteHeader() {
               </Link>
             )
           ) : (
-            <Link href="/login" className={glassNavLinkClass}>
-              <User aria-hidden="true" />
+            <Link href="/login" className={glassNavTextLinkClass}>
               Sign in
             </Link>
           )}
-        </nav>
+        </div>
       </div>
     </header>
   );
